@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · Badminton</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb; color: #111827;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    .topbar {
+      background: #1f2937; color: white;
+      padding: 14px 16px; display: flex;
+      align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      background: rgba(255,255,255,0.12); border: none; color: white;
+      padding: 6px 10px; border-radius: 7px; cursor: pointer;
+      font-size: 0.85rem; display: flex; align-items: center; gap: 4px;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.2); }
+    .topbar h1 { font-size: 1rem; font-weight: 600; }
+    .logout-btn {
+      background: transparent; border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 7px;
+      cursor: pointer; font-size: 0.8rem;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.1); }
+
+    .page { display: none; padding: 16px; max-width: 680px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: white; border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow: hidden; margin-bottom: 12px;
+    }
+    .card-header {
+      padding: 14px 16px; display: flex;
+      align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .card-header h2 { font-size: 0.95rem; font-weight: 600; }
+
+    .team-row {
+      padding: 14px 16px; display: flex;
+      align-items: center; gap: 12px;
+      border-bottom: 1px solid #f9fafb; cursor: pointer;
+    }
+    .team-row:last-child { border-bottom: none; }
+    .team-row:hover { background: #f9fafb; }
+    .team-avatar {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 1rem; flex-shrink: 0;
+    }
+    .team-info { flex: 1; min-width: 0; }
+    .team-name { font-weight: 600; font-size: 0.95rem; }
+    .team-meta { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
+    .team-arrow { color: #d1d5db; font-size: 1.1rem; }
+    .player-count-badge {
+      background: #f3f4f6; color: #6b7280;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 9px 16px; border: none; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; display: inline-flex;
+      align-items: center; gap: 5px;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: #16a34a; color: white; }
+    .btn-primary:hover { background: #15803d; }
+    .btn-secondary { background: #f3f4f6; color: #374151; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-sm { padding: 6px 10px; font-size: 0.78rem; }
+    .btn-icon { padding: 6px 8px; min-width: auto; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    input, select, textarea {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 0.9rem; color: #111827;
+      transition: border-color 0.15s; font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 0.75rem; color: #9ca3af; margin-top: 4px; }
+    .form-actions {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding-top: 8px; border-top: 1px solid #f3f4f6; margin-top: 8px;
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 200; display: flex; align-items: flex-end;
+      justify-content: center; padding: 0;
+    }
+    .modal {
+      background: white; border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 640px;
+      max-height: 90vh; overflow-y: auto;
+      padding: 20px 16px 32px;
+    }
+    .modal-handle {
+      width: 40px; height: 4px; background: #e5e7eb;
+      border-radius: 2px; margin: 0 auto 16px;
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* ── Player list (detail view) ── */
+    .player-row {
+      padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .player-row:last-child { border-bottom: none; }
+    .player-initials {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #e5e7eb; color: #6b7280;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .player-info { flex: 1; min-width: 0; }
+    .player-info .name { font-weight: 500; font-size: 0.9rem; }
+    .player-info .contact { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
+    .player-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* ── URL copy box ── */
+    .url-box {
+      background: #f0fdf4; border: 1.5px solid #86efac;
+      border-radius: 10px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; cursor: pointer;
+    }
+    .url-box .url-text {
+      flex: 1; font-size: 0.82rem; color: #15803d;
+      font-family: monospace; word-break: break-all;
+    }
+    .url-box .copy-icon { color: #16a34a; flex-shrink: 0; font-size: 1rem; }
+
+    /* ── Session history ── */
+    .session-row {
+      padding: 10px 16px; display: flex;
+      align-items: center; gap: 12px;
+      border-bottom: 1px solid #f9fafb; font-size: 0.85rem;
+    }
+    .session-row:last-child { border-bottom: none; }
+    .session-date { font-weight: 600; flex: 1; }
+    .session-chips { display: flex; gap: 6px; }
+    .s-chip { padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .s-chip-in  { background: #dcfce7; color: #15803d; }
+    .s-chip-out { background: #fee2e2; color: #b91c1c; }
+    .s-chip-pend{ background: #f3f4f6; color: #6b7280; }
+
+    /* ── Attendance (admin) ── */
+    .att-row {
+      padding: 9px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f9fafb; font-size: 0.85rem;
+    }
+    .att-row:last-child { border-bottom: none; }
+    .att-name { flex: 1; font-weight: 500; }
+    .att-bar-wrap { width: 60px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+    .att-bar { height: 100%; background: #16a34a; border-radius: 3px; }
+    .att-count { font-weight: 700; color: #16a34a; font-size: 0.88rem; }
+    .att-sub { color: #9ca3af; font-size: 0.72rem; }
+
+    /* ── Session log detail ── */
+    .session-log {
+      background: #f9fafb; padding: 0 16px 8px 36px;
+      display: none;
+    }
+    .session-log.open { display: block; }
+    .session-log-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 0; font-size: 0.8rem;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .session-log-entry:last-child { border-bottom: none; }
+    .sle-time { color: #9ca3af; min-width: 54px; }
+    .sle-name { flex: 1; }
+    .sle-badge { font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
+    .sle-badge.in  { background: #dcfce7; color: #15803d; }
+    .sle-badge.out { background: #fee2e2; color: #b91c1c; }
+    .session-row { cursor: pointer; }
+    .session-row:hover { background: #f3f4f6; }
+
+    /* ── Vacations (admin) ── */
+    .vac-row {
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f9fafb; font-size: 0.85rem;
+    }
+    .vac-row:last-child { border-bottom: none; }
+    .vac-row-info { flex: 1; }
+    .vac-row-name { font-weight: 500; }
+    .vac-row-dates { font-size: 0.75rem; color: #6b7280; }
+    .vac-row-note { font-size: 0.72rem; color: #9ca3af; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center; padding: 32px 16px;
+      color: #9ca3af; font-size: 0.9rem;
+    }
+    .empty .icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+    /* ── Login ── */
+    #login-page {
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .login-card {
+      background: white; border-radius: 16px;
+      padding: 32px 24px; width: 100%; max-width: 360px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center;
+    }
+    .login-card .logo { font-size: 3rem; margin-bottom: 8px; }
+    .login-card h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+    .login-card p { color: #6b7280; font-size: 0.875rem; margin-bottom: 24px; }
+    .error-msg {
+      background: #fee2e2; color: #dc2626;
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 12px; display: none;
+    }
+
+    /* ── Inactive badge ── */
+    .inactive-badge {
+      font-size: 0.7rem; background: #fee2e2; color: #dc2626;
+      padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+    }
+
+    /* ── Role badge ── */
+    .role-badge {
+      font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+      margin-left: 6px;
+    }
+    .role-badge.backup { background: #fef9c3; color: #92400e; }
+    .role-badge.regular { display: none; }
+
+    /* ── Inventory ── */
+    .inv-row {
+      padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .inv-row:last-child { border-bottom: none; }
+    .inv-info { flex: 1; min-width: 0; }
+    .inv-name { font-weight: 500; font-size: 0.9rem; }
+    .inv-contact { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
+    .inv-teams { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .inv-team-chip {
+      font-size: 0.68rem; padding: 1px 7px; border-radius: 20px;
+      background: #dcfce7; color: #15803d; font-weight: 600;
+    }
+    .inv-team-chip.backup { background: #fef9c3; color: #92400e; }
+
+    /* ── Pick-from-inventory list (inside modal) ── */
+    .pick-list {
+      max-height: 240px; overflow-y: auto;
+      border: 1.5px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px;
+    }
+    .pick-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-bottom: 1px solid #f3f4f6; cursor: pointer;
+    }
+    .pick-row:last-child { border-bottom: none; }
+    .pick-row:hover { background: #f0fdf4; }
+    .pick-row.selected { background: #dcfce7; }
+    .pick-name { flex: 1; font-size: 0.88rem; font-weight: 500; }
+    .pick-contact { font-size: 0.75rem; color: #9ca3af; }
+    .pick-check { color: #16a34a; font-size: 1rem; opacity: 0; }
+    .pick-row.selected .pick-check { opacity: 1; }
+    .pick-search {
+      width: 100%; padding: 8px 10px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 0.88rem; font-family: inherit;
+      margin-bottom: 8px;
+    }
+    .pick-search:focus { outline: none; border-color: #16a34a; }
+
+    /* modal tabs */
+    .modal-tabs {
+      display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 14px; gap: 0;
+    }
+    .modal-tab {
+      padding: 8px 16px; font-size: 0.85rem; font-weight: 600;
+      color: #9ca3af; cursor: pointer; border-bottom: 2px solid transparent;
+      margin-bottom: -2px; transition: color 0.15s;
+    }
+    .modal-tab.active { color: #16a34a; border-bottom-color: #16a34a; }
+
+    /* ── Misc ── */
+    .section-title {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #9ca3af;
+      padding: 16px 0 6px;
+    }
+    .tag { display: inline-flex; align-items: center; gap: 4px; }
+
+    @media (min-width: 600px) {
+      .modal { border-radius: 16px; margin: auto; max-height: 85vh; }
+      .modal-backdrop { align-items: center; padding: 16px; }
+      .modal-handle { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ─────────────────────────────────────────────────────────────── -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="logo">🏸</div>
+    <h1>Badminton Admin</h1>
+    <p>Sign in to manage your teams</p>
+    <div class="error-msg" id="login-error">Invalid password</div>
+    <div class="form-group">
+      <input type="password" id="login-pw" placeholder="Admin password"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()">
+      Sign In
+    </button>
+  </div>
+</div>
+
+<!-- ── Main app ───────────────────────────────────────────────────────────── -->
+<div id="main-app" style="display:none">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" id="back-btn" onclick="goBack()" style="display:none">← Back</button>
+      <h1 id="topbar-title">🏸 Admin</h1>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign out</button>
+  </div>
+
+  <!-- Teams list -->
+  <div class="page active" id="page-teams">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-top:4px;">
+      <div style="font-weight:700;font-size:1.1rem;">Teams</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="openInventoryPage()">👥 Players</button>
+        <button class="btn btn-primary btn-sm" onclick="openTeamModal()">+ New team</button>
+      </div>
+    </div>
+    <div class="card" id="teams-card">
+      <div class="empty"><div class="icon">🏸</div>No teams yet. Create one!</div>
+    </div>
+  </div>
+
+  <!-- Player inventory -->
+  <div class="page" id="page-inventory">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-top:4px;">
+      <div style="font-weight:700;font-size:1.1rem;">Player inventory</div>
+      <button class="btn btn-primary btn-sm" onclick="openInvModal()">+ New player</button>
+    </div>
+    <div class="card" id="inventory-card">
+      <div class="empty"><div class="icon">👤</div>No players yet.</div>
+    </div>
+  </div>
+
+  <!-- Team detail -->
+  <div class="page" id="page-team-detail">
+    <div id="team-url-box"></div>
+
+    <div class="card" id="team-info-card">
+      <div class="card-header">
+        <h2>Team settings</h2>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="openTeamModal(currentTeam)">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTeam()">Delete</button>
+        </div>
+      </div>
+      <div id="team-info-body" style="padding:16px;font-size:0.875rem;line-height:1.8;color:#374151;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Players</h2>
+        <button class="btn btn-primary btn-sm" onclick="openPlayerModal()">+ Add player</button>
+      </div>
+      <div id="players-list">
+        <div class="empty"><div class="icon">👤</div>No players yet.</div>
+      </div>
+    </div>
+
+    <div class="section-title">Season attendance</div>
+    <div class="card">
+      <div id="attendance-list">
+        <div class="empty"><div class="icon">📊</div>Loading…</div>
+      </div>
+    </div>
+
+    <div class="section-title">Vacations</div>
+    <div class="card">
+      <div id="vacations-list">
+        <div class="empty"><div class="icon">🌴</div>No vacations on record.</div>
+      </div>
+    </div>
+
+    <div class="section-title">Recent sessions</div>
+    <div class="card">
+      <div id="sessions-list">
+        <div class="empty"><div class="icon">📅</div>No sessions yet.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #main-app -->
+
+<!-- ── Modals ─────────────────────────────────────────────────────────────── -->
+
+<!-- Team modal -->
+<div class="modal-backdrop" id="team-modal" style="display:none" onclick="closeTeamModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h2 id="team-modal-title">New team</h2>
+    <div class="form-group">
+      <label>Team name *</label>
+      <input type="text" id="tf-name" placeholder="Thursday Warriors" oninput="autoSlug()">
+    </div>
+    <div class="form-group">
+      <label>URL slug *</label>
+      <input type="text" id="tf-slug" placeholder="thursday-warriors">
+      <div class="form-hint">Players access the team at: <strong>/t/your-slug</strong></div>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="tf-desc" placeholder="Optional description (shown collapsed on the team page)" rows="3" style="resize:vertical;"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Location</label>
+      <input type="text" id="tf-location" placeholder="Sports Hall, Main St">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Play day *</label>
+        <select id="tf-day">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Play time *</label>
+        <input type="time" id="tf-time" value="19:00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Season start *</label>
+        <input type="text" id="tf-season-start" placeholder="09-01" maxlength="5"
+               pattern="\d{2}-\d{2}" title="MM-DD">
+        <div class="form-hint">MM-DD (e.g. 09-01)</div>
+      </div>
+      <div class="form-group">
+        <label>Season end *</label>
+        <input type="text" id="tf-season-end" placeholder="05-31" maxlength="5"
+               pattern="\d{2}-\d{2}" title="MM-DD">
+        <div class="form-hint">MM-DD (e.g. 05-31)</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Min. players needed *</label>
+        <input type="number" id="tf-min" min="2" max="100" value="4">
+      </div>
+      <div class="form-group">
+        <label>Reminder (hours before) *</label>
+        <input type="number" id="tf-reminder" min="0.5" max="168" step="0.5" value="24">
+        <div class="form-hint">e.g. 24 = reminder sent 24 h before game</div>
+      </div>
+    </div>
+    <div class="error-msg" id="team-modal-error" style="display:none;margin-bottom:12px;"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeTeamModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeam()">Save team</button>
+    </div>
+  </div>
+</div>
+
+<!-- Player modal (add to team) -->
+<div class="modal-backdrop" id="player-modal" style="display:none" onclick="closePlayerModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h2 id="player-modal-title">Add player</h2>
+
+    <!-- Tabs — only shown when adding new -->
+    <div class="modal-tabs" id="player-modal-tabs">
+      <div class="modal-tab active" onclick="switchPlayerTab('inventory')">From inventory</div>
+      <div class="modal-tab" onclick="switchPlayerTab('new')">Create new</div>
+    </div>
+
+    <!-- Tab: pick from inventory -->
+    <div id="player-tab-inventory">
+      <input class="pick-search" id="inv-search" placeholder="Search players…" oninput="filterPickList()">
+      <div class="pick-list" id="inv-pick-list"></div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="inv-role">
+          <option value="regular">Regular — gets notifications</option>
+          <option value="backup">Backup — no notifications</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tab: create new -->
+    <div id="player-tab-new" style="display:none">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" id="pf-name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Email (for reminders)</label>
+        <input type="email" id="pf-email" placeholder="player@example.com">
+      </div>
+      <div class="form-group">
+        <label>Phone (for SMS reminders)</label>
+        <input type="tel" id="pf-phone" placeholder="+1 555 000 0000">
+        <div class="form-hint">Include country code (e.g. +1, +44, +354)</div>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="pf-role">
+          <option value="regular">Regular — gets notifications</option>
+          <option value="backup">Backup — no notifications</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Edit mode (no tabs) -->
+    <div id="player-tab-edit" style="display:none">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" id="pe-name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Email (for reminders)</label>
+        <input type="email" id="pe-email" placeholder="player@example.com">
+      </div>
+      <div class="form-group">
+        <label>Phone (for SMS reminders)</label>
+        <input type="tel" id="pe-phone" placeholder="+1 555 000 0000">
+        <div class="form-hint">Include country code (e.g. +1, +44, +354)</div>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="pe-role">
+          <option value="regular">Regular — gets notifications</option>
+          <option value="backup">Backup — no notifications</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;">
+          <input type="checkbox" id="pe-active" style="width:auto;accent-color:#16a34a">
+          Active player
+        </label>
+      </div>
+    </div>
+
+    <div class="error-msg" id="player-modal-error" style="display:none;margin-bottom:12px;"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closePlayerModal()">Cancel</button>
+      <button class="btn btn-primary" id="player-modal-save" onclick="savePlayer()">Add player</button>
+    </div>
+  </div>
+</div>
+
+<!-- Inventory modal (create/edit global player) -->
+<div class="modal-backdrop" id="inv-modal" style="display:none" onclick="closeInvModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h2 id="inv-modal-title">New player</h2>
+    <div class="form-group">
+      <label>Name *</label>
+      <input type="text" id="if-name" placeholder="Full name">
+    </div>
+    <div class="form-group">
+      <label>Email (for reminders)</label>
+      <input type="email" id="if-email" placeholder="player@example.com">
+    </div>
+    <div class="form-group">
+      <label>Phone (for SMS reminders)</label>
+      <input type="tel" id="if-phone" placeholder="+1 555 000 0000">
+      <div class="form-hint">Include country code (e.g. +1, +44, +354)</div>
+    </div>
+    <div class="error-msg" id="inv-modal-error" style="display:none;margin-bottom:12px;"></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeInvModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveInvPlayer()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentTeam = null;
+let editingTeamId = null;
+let editingPlayerId = null;
+let editingInvId = null;
+let inventoryCache = [];   // full global player list
+let selectedInvId = null;  // currently selected in pick list
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtMonthDay(mmdd) {
+  const [m,d] = mmdd.split('-').map(Number);
+  return `${MONTHS[m-1]} ${d}`;
+}
+function fmtTime(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const res = await fetch('/admin/api/me');
+  const data = await res.json();
+  if (data.authenticated) showApp();
+}
+
+async function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  const res = await fetch('/admin/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw }),
+  });
+  if (res.ok) {
+    showApp();
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('login-pw').focus();
+  }
+}
+
+async function doLogout() {
+  await fetch('/admin/api/logout', { method: 'POST' });
+  location.reload();
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  loadTeams();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goBack() {
+  showPage('page-teams');
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('topbar-title').textContent = '🏸 Admin';
+  currentTeam = null;
+}
+
+function openInventoryPage() {
+  document.getElementById('topbar-title').textContent = 'Player inventory';
+  document.getElementById('back-btn').style.display = 'flex';
+  showPage('page-inventory');
+  loadInventory();
+}
+
+// ── Teams ─────────────────────────────────────────────────────────────────────
+async function loadTeams() {
+  const res = await fetch('/admin/api/teams');
+  const teams = await res.json();
+  const card = document.getElementById('teams-card');
+
+  if (!teams.length) {
+    card.innerHTML = '<div class="empty"><div class="icon">🏸</div>No teams yet. Create one!</div>';
+    return;
+  }
+
+  card.innerHTML = teams.map(t => `
+    <div class="team-row" onclick="openTeamDetail(${t.id})">
+      <div class="team-avatar">${initials(t.name)}</div>
+      <div class="team-info">
+        <div class="team-name">${escHtml(t.name)}</div>
+        <div class="team-meta">${DAYS[t.day_of_week]}s · ${fmtTime(t.play_time)} · ${fmtMonthDay(t.season_start)}–${fmtMonthDay(t.season_end)}</div>
+      </div>
+      <span class="player-count-badge">${t.player_count} players</span>
+      <span class="team-arrow">›</span>
+    </div>`).join('');
+}
+
+async function openTeamDetail(teamId) {
+  const res = await fetch('/admin/api/teams');
+  const teams = await res.json();
+  currentTeam = teams.find(t => t.id === teamId);
+  if (!currentTeam) return;
+
+  document.getElementById('topbar-title').textContent = escHtml(currentTeam.name);
+  document.getElementById('back-btn').style.display = 'flex';
+
+  // URL box
+  const teamUrl = `${location.origin}/t/${currentTeam.slug}`;
+  document.getElementById('team-url-box').innerHTML = `
+    <div class="url-box" onclick="copyUrl('${escHtml(teamUrl)}', this)" title="Tap to copy">
+      <span class="copy-icon">🔗</span>
+      <span class="url-text">${escHtml(teamUrl)}</span>
+      <span style="font-size:0.75rem;color:#16a34a;font-weight:600;flex-shrink:0;">Copy</span>
+    </div>`;
+
+  // Team info
+  document.getElementById('team-info-body').innerHTML = `
+    <div>📅 <strong>Day:</strong> ${DAYS[currentTeam.day_of_week]}s at ${fmtTime(currentTeam.play_time)}</div>
+    ${currentTeam.location ? `<div>📍 <strong>Location:</strong> ${escHtml(currentTeam.location)}</div>` : ''}
+    <div>🗓️ <strong>Season:</strong> ${fmtMonthDay(currentTeam.season_start)} – ${fmtMonthDay(currentTeam.season_end)}</div>
+    <div>👥 <strong>Min. players:</strong> ${currentTeam.min_players}</div>
+    <div>🔔 <strong>Reminder:</strong> ${currentTeam.reminder_hours} hours before game</div>
+    ${currentTeam.description ? `<div style="margin-top:8px;color:#6b7280;">${escHtml(currentTeam.description)}</div>` : ''}`;
+
+  showPage('page-team-detail');
+  loadPlayers(currentTeam.id);
+  loadSessions(currentTeam.id);
+  loadAttendance(currentTeam.id);
+  loadVacations(currentTeam.id);
+}
+
+function copyUrl(url, el) {
+  navigator.clipboard.writeText(url).then(() => {
+    const span = el.querySelector('span:last-child');
+    span.textContent = 'Copied!';
+    setTimeout(() => span.textContent = 'Copy', 2000);
+  });
+}
+
+// ── Team modal ────────────────────────────────────────────────────────────────
+let autoSlugEnabled = true;
+
+function openTeamModal(team = null) {
+  editingTeamId = team ? team.id : null;
+  document.getElementById('team-modal-title').textContent = team ? 'Edit team' : 'New team';
+  document.getElementById('team-modal-error').style.display = 'none';
+  autoSlugEnabled = !team;
+
+  document.getElementById('tf-name').value     = team?.name || '';
+  document.getElementById('tf-slug').value     = team?.slug || '';
+  document.getElementById('tf-desc').value     = team?.description || '';
+  document.getElementById('tf-location').value = team?.location || '';
+  document.getElementById('tf-day').value      = team?.day_of_week ?? 4;
+  document.getElementById('tf-time').value     = team?.play_time || '19:00';
+  document.getElementById('tf-season-start').value = team?.season_start || '09-01';
+  document.getElementById('tf-season-end').value   = team?.season_end   || '05-31';
+  document.getElementById('tf-min').value      = team?.min_players || 4;
+  document.getElementById('tf-reminder').value = team?.reminder_hours || 24;
+
+  document.getElementById('team-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('tf-name').focus(), 100);
+}
+
+function closeTeamModal(e) {
+  if (e && e.target !== document.getElementById('team-modal')) return;
+  document.getElementById('team-modal').style.display = 'none';
+}
+
+function autoSlug() {
+  if (!autoSlugEnabled) return;
+  const name = document.getElementById('tf-name').value;
+  document.getElementById('tf-slug').value = name
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g,'')
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-');
+}
+
+function validateMmDd(val) {
+  return /^\d{2}-\d{2}$/.test(val);
+}
+
+async function saveTeam() {
+  const errEl = document.getElementById('team-modal-error');
+  errEl.style.display = 'none';
+
+  const ss = document.getElementById('tf-season-start').value.trim();
+  const se = document.getElementById('tf-season-end').value.trim();
+  if (!validateMmDd(ss) || !validateMmDd(se)) {
+    errEl.textContent = 'Season dates must be in MM-DD format (e.g. 09-01)';
+    errEl.style.display = 'block'; return;
+  }
+
+  const body = {
+    name:          document.getElementById('tf-name').value.trim(),
+    slug:          document.getElementById('tf-slug').value.trim(),
+    description:   document.getElementById('tf-desc').value.trim(),
+    location:      document.getElementById('tf-location').value.trim(),
+    day_of_week:   Number(document.getElementById('tf-day').value),
+    play_time:     document.getElementById('tf-time').value,
+    season_start:  ss,
+    season_end:    se,
+    min_players:   Number(document.getElementById('tf-min').value),
+    reminder_hours: Number(document.getElementById('tf-reminder').value),
+  };
+
+  if (!body.name || !body.slug) {
+    errEl.textContent = 'Name and slug are required';
+    errEl.style.display = 'block'; return;
+  }
+
+  const url = editingTeamId ? `/admin/api/teams/${editingTeamId}` : '/admin/api/teams';
+  const method = editingTeamId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errEl.textContent = data.error || 'Something went wrong';
+    errEl.style.display = 'block'; return;
+  }
+
+  document.getElementById('team-modal').style.display = 'none';
+  loadTeams();
+  if (editingTeamId) openTeamDetail(editingTeamId);
+}
+
+async function deleteTeam() {
+  if (!currentTeam) return;
+  if (!confirm(`Delete "${currentTeam.name}" and all its data? This cannot be undone.`)) return;
+  await fetch(`/admin/api/teams/${currentTeam.id}`, { method: 'DELETE' });
+  goBack();
+  loadTeams();
+}
+
+// ── Players ───────────────────────────────────────────────────────────────────
+async function loadPlayers(teamId) {
+  const res = await fetch(`/admin/api/teams/${teamId}/players`);
+  const players = await res.json();
+  const el = document.getElementById('players-list');
+
+  if (!players.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">👤</div>No players yet.</div>';
+    return;
+  }
+
+  const sorted = [...players].sort((a,b) => {
+    if (a.role === b.role) return a.name.localeCompare(b.name);
+    return a.role === 'regular' ? -1 : 1;
+  });
+  el.innerHTML = sorted.map(p => `
+    <div class="player-row">
+      <div class="player-initials">${initials(p.name)}</div>
+      <div class="player-info">
+        <div class="name">
+          ${escHtml(p.name)}
+          ${!p.active ? '<span class="inactive-badge">Inactive</span>' : ''}
+          <span class="role-badge ${p.role || 'regular'}">${p.role === 'backup' ? 'Backup' : ''}</span>
+        </div>
+        <div class="contact">${[p.email, p.phone].filter(Boolean).join(' · ') || 'No contact info'}</div>
+      </div>
+      <div class="player-actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openPlayerModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deletePlayer(${p.id})">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+// Open in "add" mode (tabs: inventory / new) or "edit" mode
+async function openPlayerModal(player = null) {
+  editingPlayerId = player ? player.id : null;
+  selectedInvId = null;
+  document.getElementById('player-modal-error').style.display = 'none';
+
+  if (player) {
+    // Edit mode
+    document.getElementById('player-modal-title').textContent = 'Edit player';
+    document.getElementById('player-modal-tabs').style.display = 'none';
+    document.getElementById('player-tab-inventory').style.display = 'none';
+    document.getElementById('player-tab-new').style.display = 'none';
+    document.getElementById('player-tab-edit').style.display = 'block';
+    document.getElementById('player-modal-save').textContent = 'Save';
+
+    document.getElementById('pe-name').value  = player.name  || '';
+    document.getElementById('pe-email').value = player.email || '';
+    document.getElementById('pe-phone').value = player.phone || '';
+    document.getElementById('pe-role').value  = player.role  || 'regular';
+    document.getElementById('pe-active').checked = !!player.active;
+    document.getElementById('player-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('pe-name').focus(), 100);
+  } else {
+    // Add mode
+    document.getElementById('player-modal-title').textContent = 'Add player';
+    document.getElementById('player-modal-tabs').style.display = 'flex';
+    document.getElementById('player-modal-save').textContent = 'Add player';
+    switchPlayerTab('inventory');
+    document.getElementById('player-modal').style.display = 'flex';
+
+    // Load inventory and filter out players already on this team
+    const [invRes, teamRes] = await Promise.all([
+      fetch('/admin/api/inventory'),
+      fetch(`/admin/api/teams/${currentTeam.id}/players`),
+    ]);
+    inventoryCache = await invRes.json();
+    const teamPlayerIds = new Set((await teamRes.json()).map(p => p.global_player_id).filter(Boolean));
+    inventoryCache = inventoryCache.filter(gp => !teamPlayerIds.has(gp.id));
+    renderPickList('');
+  }
+}
+
+function switchPlayerTab(tab) {
+  document.querySelectorAll('.modal-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'inventory') || (i === 1 && tab === 'new'));
+  });
+  document.getElementById('player-tab-inventory').style.display = tab === 'inventory' ? 'block' : 'none';
+  document.getElementById('player-tab-new').style.display = tab === 'new' ? 'block' : 'none';
+}
+
+function renderPickList(query) {
+  const list = document.getElementById('inv-pick-list');
+  const q = query.toLowerCase();
+  const filtered = inventoryCache.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.email || '').toLowerCase().includes(q)
+  );
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:12px;text-align:center;color:#9ca3af;font-size:0.85rem;">No players found.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(p => `
+    <div class="pick-row ${selectedInvId === p.id ? 'selected' : ''}"
+         onclick="selectInvPlayer(${p.id})">
+      <div>
+        <div class="pick-name">${escHtml(p.name)}</div>
+        <div class="pick-contact">${[p.email, p.phone].filter(Boolean).join(' · ') || 'No contact'}</div>
+      </div>
+      <div class="pick-check">✓</div>
+    </div>`).join('');
+}
+
+function filterPickList() {
+  renderPickList(document.getElementById('inv-search').value);
+}
+
+function selectInvPlayer(id) {
+  selectedInvId = selectedInvId === id ? null : id;
+  renderPickList(document.getElementById('inv-search').value);
+}
+
+function closePlayerModal(e) {
+  if (e && e.target !== document.getElementById('player-modal')) return;
+  document.getElementById('player-modal').style.display = 'none';
+}
+
+async function savePlayer() {
+  const errEl = document.getElementById('player-modal-error');
+  errEl.style.display = 'none';
+
+  if (editingPlayerId) {
+    // Edit existing
+    const body = {
+      name:   document.getElementById('pe-name').value.trim(),
+      email:  document.getElementById('pe-email').value.trim(),
+      phone:  document.getElementById('pe-phone').value.trim(),
+      role:   document.getElementById('pe-role').value,
+      active: document.getElementById('pe-active').checked,
+    };
+    if (!body.name) { errEl.textContent = 'Name is required'; errEl.style.display = 'block'; return; }
+
+    const res = await fetch(`/admin/api/players/${editingPlayerId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Error'; errEl.style.display = 'block'; return; }
+
+  } else {
+    // Check which tab is active
+    const invTab = document.getElementById('player-tab-inventory');
+    const isInventoryTab = invTab && invTab.style.display !== 'none';
+
+    let body;
+    if (isInventoryTab) {
+      if (!selectedInvId) { errEl.textContent = 'Select a player from the list.'; errEl.style.display = 'block'; return; }
+      body = { globalPlayerId: selectedInvId, role: document.getElementById('inv-role').value };
+    } else {
+      const name = document.getElementById('pf-name').value.trim();
+      if (!name) { errEl.textContent = 'Name is required'; errEl.style.display = 'block'; return; }
+      body = {
+        name,
+        email: document.getElementById('pf-email').value.trim(),
+        phone: document.getElementById('pf-phone').value.trim(),
+        role:  document.getElementById('pf-role').value,
+      };
+    }
+
+    const res = await fetch(`/admin/api/teams/${currentTeam.id}/players`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Error'; errEl.style.display = 'block'; return; }
+  }
+
+  document.getElementById('player-modal').style.display = 'none';
+  loadPlayers(currentTeam.id);
+}
+
+async function deletePlayer(playerId) {
+  if (!confirm('Remove this player from the team? Their response history will be deleted.')) return;
+  await fetch(`/admin/api/players/${playerId}`, { method: 'DELETE' });
+  loadPlayers(currentTeam.id);
+}
+
+// ── Inventory page ────────────────────────────────────────────────────────────
+async function loadInventory() {
+  const res = await fetch('/admin/api/inventory');
+  const players = await res.json();
+  const card = document.getElementById('inventory-card');
+
+  if (!players.length) {
+    card.innerHTML = '<div class="empty"><div class="icon">👤</div>No players yet. Add one!</div>';
+    return;
+  }
+
+  card.innerHTML = players.map(gp => {
+    const teamChips = gp.teams.map(t =>
+      `<span class="inv-team-chip ${t.role === 'backup' ? 'backup' : ''}">${escHtml(t.teamName)}${t.role === 'backup' ? ' (B)' : ''}</span>`
+    ).join('');
+    return `
+      <div class="inv-row">
+        <div class="player-initials">${initials(gp.name)}</div>
+        <div class="inv-info">
+          <div class="inv-name">${escHtml(gp.name)}</div>
+          <div class="inv-contact">${[gp.email, gp.phone].filter(Boolean).join(' · ') || 'No contact info'}</div>
+          ${gp.teams.length ? `<div class="inv-teams">${teamChips}</div>` : ''}
+        </div>
+        <div class="player-actions">
+          <button class="btn btn-secondary btn-sm btn-icon"
+                  onclick="openInvModal(${JSON.stringify(gp).replace(/"/g,'&quot;')})">✏️</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvPlayer(${gp.id})">🗑️</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openInvModal(player = null) {
+  editingInvId = player ? player.id : null;
+  document.getElementById('inv-modal-title').textContent = player ? 'Edit player' : 'New player';
+  document.getElementById('inv-modal-error').style.display = 'none';
+  document.getElementById('if-name').value  = player?.name  || '';
+  document.getElementById('if-email').value = player?.email || '';
+  document.getElementById('if-phone').value = player?.phone || '';
+  document.getElementById('inv-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('if-name').focus(), 100);
+}
+
+function closeInvModal(e) {
+  if (e && e.target !== document.getElementById('inv-modal')) return;
+  document.getElementById('inv-modal').style.display = 'none';
+}
+
+async function saveInvPlayer() {
+  const errEl = document.getElementById('inv-modal-error');
+  errEl.style.display = 'none';
+  const body = {
+    name:  document.getElementById('if-name').value.trim(),
+    email: document.getElementById('if-email').value.trim(),
+    phone: document.getElementById('if-phone').value.trim(),
+  };
+  if (!body.name) { errEl.textContent = 'Name is required'; errEl.style.display = 'block'; return; }
+
+  const url = editingInvId ? `/admin/api/inventory/${editingInvId}` : '/admin/api/inventory';
+  const method = editingInvId ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { errEl.textContent = data.error || 'Error'; errEl.style.display = 'block'; return; }
+
+  document.getElementById('inv-modal').style.display = 'none';
+  loadInventory();
+}
+
+async function deleteInvPlayer(id) {
+  if (!confirm('Remove from inventory? This will not remove them from any teams.')) return;
+  await fetch(`/admin/api/inventory/${id}`, { method: 'DELETE' });
+  loadInventory();
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+async function loadSessions(teamId) {
+  const res = await fetch(`/admin/api/teams/${teamId}/sessions`);
+  const sessions = await res.json();
+  const el = document.getElementById('sessions-list');
+
+  if (!sessions.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📅</div>No sessions yet.</div>';
+    return;
+  }
+
+  el.innerHTML = sessions.map(s => {
+    const [y,m,d] = s.session_date.split('-').map(Number);
+    const label = `${DAYS[new Date(y,m-1,d).getDay()]} ${MONTHS[m-1]} ${d}`;
+    return `
+      <div class="session-row" onclick="toggleSessionLog(${s.id}, this)">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #f9fafb;">
+          <div class="session-date" style="flex:1">${label}</div>
+          <div class="session-chips">
+            <span class="s-chip s-chip-in">✓ ${s.confirmed}</span>
+            <span class="s-chip s-chip-out">✗ ${s.declined}</span>
+            ${s.pending > 0 ? `<span class="s-chip s-chip-pend">? ${s.pending}</span>` : ''}
+          </div>
+          <span style="color:#d1d5db;font-size:0.8rem;margin-left:6px;" id="slog-arrow-${s.id}">▼</span>
+        </div>
+        <div class="session-log" id="slog-${s.id}"></div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleSessionLog(sessionId, rowEl) {
+  const logEl = document.getElementById(`slog-${sessionId}`);
+  const arrowEl = document.getElementById(`slog-arrow-${sessionId}`);
+  if (!logEl) return;
+
+  const isOpen = logEl.classList.toggle('open');
+  if (arrowEl) arrowEl.style.transform = isOpen ? 'rotate(180deg)' : '';
+
+  if (!isOpen) return;
+  if (logEl.dataset.loaded) return;
+  logEl.dataset.loaded = '1';
+
+  logEl.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:0.8rem;">Loading…</div>';
+  try {
+    const res = await fetch(`/admin/api/sessions/${sessionId}/responses`);
+    const rows = await res.json();
+    if (!rows.length) {
+      logEl.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:0.8rem;">No responses logged.</div>';
+      return;
+    }
+    logEl.innerHTML = rows.map(r => `
+      <div class="session-log-entry">
+        <div class="sle-time">${fmtTimestamp(r.updated_at)}</div>
+        <div class="sle-name">${escHtml(r.name)}</div>
+        <div class="sle-badge ${r.status}">${r.status === 'in' ? '✓ In' : '✗ Out'}</div>
+      </div>`).join('');
+  } catch {
+    logEl.innerHTML = '<div style="padding:8px;color:#dc2626;font-size:0.8rem;">Could not load log.</div>';
+  }
+}
+
+function fmtTimestamp(utcStr) {
+  if (!utcStr) return '';
+  const d = new Date(utcStr.replace(' ', 'T') + 'Z');
+  const h = d.getHours(), m = d.getMinutes();
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+async function loadAttendance(teamId) {
+  const res = await fetch(`/admin/api/teams/${teamId}/attendance`);
+  const data = await res.json();
+  const el = document.getElementById('attendance-list');
+
+  if (!data.attendance || !data.attendance.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📊</div>No data yet.</div>';
+    return;
+  }
+
+  const maxPlayed = Math.max(...data.attendance.map(r => r.played), 1);
+  const [sy, sm2, sd] = data.seasonStart.split('-').map(Number);
+  const [ey, em2, ed] = data.seasonEnd.split('-').map(Number);
+  const seasonLabel = `${MONTHS[sm2-1].slice(0,3)} ${sd}, ${sy} – ${MONTHS[em2-1].slice(0,3)} ${ed}, ${ey}`;
+
+  el.innerHTML = `
+    <div style="padding:8px 16px 4px;font-size:0.72rem;color:#9ca3af;">${seasonLabel}</div>
+    ${data.attendance.map(r => `
+      <div class="att-row">
+        <div class="att-name">${escHtml(r.name)}</div>
+        <div class="att-bar-wrap">
+          <div class="att-bar" style="width:${r.total_sessions ? Math.round(r.played/maxPlayed*100) : 0}%"></div>
+        </div>
+        <div class="att-count">${r.played}<span class="att-sub">/${r.total_sessions}</span></div>
+      </div>`).join('')}`;
+}
+
+// ── Vacations ─────────────────────────────────────────────────────────────────
+async function loadVacations(teamId) {
+  const res = await fetch(`/admin/api/teams/${teamId}/vacations`);
+  const vacations = await res.json();
+  const el = document.getElementById('vacations-list');
+
+  if (!vacations.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🌴</div>No vacations on record.</div>';
+    return;
+  }
+
+  el.innerHTML = vacations.map(v => {
+    const [sy,sm2,sd] = v.start_date.split('-').map(Number);
+    const [ey,em2,ed] = v.end_date.split('-').map(Number);
+    const datesLabel = `${MONTHS[sm2-1].slice(0,3)} ${sd} – ${MONTHS[em2-1].slice(0,3)} ${ed}`;
+    return `
+      <div class="vac-row" id="vadmin-${v.id}">
+        <div class="vac-row-info">
+          <div class="vac-row-name">${escHtml(v.player_name)}</div>
+          <div class="vac-row-dates">${datesLabel}</div>
+          ${v.note ? `<div class="vac-row-note">${escHtml(v.note)}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteVacationAdmin(${v.id})">🗑️</button>
+      </div>`;
+  }).join('');
+}
+
+async function deleteVacationAdmin(id) {
+  if (!confirm('Remove this vacation?')) return;
+  await fetch(`/admin/api/vacations/${id}`, { method: 'DELETE' });
+  const el = document.getElementById(`vadmin-${id}`);
+  if (el) el.remove();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

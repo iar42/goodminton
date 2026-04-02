@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#16a34a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Badminton</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0fdf4;
+      min-height: 100vh;
+      color: #111827;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      color: white;
+      padding: 20px 16px 24px;
+    }
+    .header-shuttle { font-size: 1.6rem; margin-bottom: 4px; }
+    .header h1 { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+    .header .meta {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-top: 8px; font-size: 0.82rem; opacity: 0.88;
+    }
+    .meta-item { display: flex; align-items: center; gap: 4px; }
+
+    /* ── Description toggle ── */
+    .desc-toggle {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 10px; background: rgba(255,255,255,0.15);
+      border: none; color: white; border-radius: 6px;
+      padding: 5px 10px; font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .desc-toggle:active { background: rgba(255,255,255,0.25); }
+    .desc-arrow { transition: transform 0.2s; display: inline-block; }
+    .desc-arrow.open { transform: rotate(90deg); }
+    .desc-body {
+      margin-top: 10px; background: rgba(255,255,255,0.12);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap;
+      display: none;
+    }
+    .desc-body.open { display: block; }
+
+    /* ── Status card ── */
+    .status-card {
+      background: white;
+      margin: -10px 12px 12px;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .status-count {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .status-count.ready  { color: #16a34a; }
+    .status-count.warn   { color: #d97706; }
+    .status-count.low    { color: #dc2626; }
+    .status-label { font-size: 0.8rem; color: #6b7280; }
+
+    .status-chips {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .chip { padding: 3px 8px; border-radius: 20px; }
+    .chip-in      { background: #dcfce7; color: #15803d; }
+    .chip-out     { background: #fee2e2; color: #b91c1c; }
+    .chip-pending { background: #f3f4f6; color: #6b7280; }
+
+    .bar-wrap {
+      height: 8px; background: #e5e7eb;
+      border-radius: 4px; overflow: hidden;
+      margin-top: 12px;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.4s ease, background-color 0.3s ease;
+    }
+    .bar-fill.ready { background: #16a34a; }
+    .bar-fill.warn  { background: #f59e0b; }
+    .bar-fill.low   { background: #ef4444; }
+
+    .game-on-banner {
+      background: #dcfce7; border: 1.5px solid #86efac;
+      border-radius: 10px; padding: 10px 14px; margin-top: 12px;
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; color: #15803d; font-size: 0.9rem;
+    }
+
+    /* ── Player list ── */
+    .section-label {
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: #9ca3af; padding: 0 16px; margin-bottom: 6px;
+    }
+
+    .player-list { padding: 0 12px 8px; }
+    .backup-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #9ca3af; padding: 0 16px;
+      margin: 8px 0 6px;
+    }
+    .player-card.backup { opacity: 0.85; }
+    .backup-badge {
+      font-size: 0.65rem; font-weight: 700; color: #9ca3af;
+      background: #f3f4f6; border-radius: 4px; padding: 1px 5px;
+      margin-left: 4px; vertical-align: middle;
+    }
+
+    .player-card {
+      background: white; border-radius: 12px; margin-bottom: 8px;
+      padding: 13px 14px; display: flex; align-items: center;
+      gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      transition: box-shadow 0.15s;
+    }
+    .player-card:active { box-shadow: 0 0 0 rgba(0,0,0,0); }
+
+    .player-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: #e5e7eb;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 700; color: #6b7280; flex-shrink: 0;
+      transition: background 0.2s, color 0.2s;
+    }
+    .player-avatar.in  { background: #16a34a; color: white; }
+    .player-avatar.out { background: #dc2626; color: white; }
+
+    .player-name { flex: 1; font-size: 1rem; font-weight: 500; color: #111827; }
+
+    .btn-group { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .btn {
+      min-width: 54px; padding: 8px 12px; border: 2px solid transparent;
+      border-radius: 9px; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.93); }
+
+    .btn-in  { border-color: #86efac; background: #f0fdf4; color: #16a34a; }
+    .btn-in.active  { border-color: #16a34a; background: #16a34a; color: white; }
+    .btn-out { border-color: #fca5a5; background: #fff5f5; color: #dc2626; }
+    .btn-out.active { border-color: #dc2626; background: #dc2626; color: white; }
+
+    /* ── Collapsible sections ── */
+    .collapsible-section {
+      padding: 0 12px 8px;
+    }
+    .collapsible-header {
+      background: white; border-radius: 12px;
+      padding: 12px 14px; display: flex;
+      align-items: center; justify-content: space-between;
+      cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .collapsible-header:active { background: #f9fafb; }
+    .collapsible-title {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280;
+    }
+    .collapsible-chevron {
+      color: #9ca3af; font-size: 0.8rem; transition: transform 0.2s;
+    }
+    .collapsible-chevron.open { transform: rotate(180deg); }
+    .collapsible-body {
+      display: none; background: white;
+      border-radius: 0 0 12px 12px; overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+      margin-top: -4px;
+    }
+    .collapsible-body.open { display: block; }
+
+    /* ── Response log ── */
+    .log-entry {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-bottom: 1px solid #f3f4f6;
+      font-size: 0.85rem;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: #9ca3af; font-size: 0.75rem; flex-shrink: 0; min-width: 54px; }
+    .log-name { flex: 1; font-weight: 500; }
+    .log-badge {
+      font-size: 0.72rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .log-badge.in  { background: #dcfce7; color: #15803d; }
+    .log-badge.out { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Attendance ── */
+    .att-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-bottom: 1px solid #f3f4f6;
+      font-size: 0.85rem;
+    }
+    .att-row:last-child { border-bottom: none; }
+    .att-name { flex: 1; font-weight: 500; }
+    .att-count {
+      font-weight: 700; font-size: 0.9rem; color: #16a34a;
+    }
+    .att-total { color: #9ca3af; font-size: 0.75rem; margin-left: 2px; }
+    .att-bar-wrap {
+      width: 60px; height: 5px; background: #e5e7eb;
+      border-radius: 3px; overflow: hidden;
+    }
+    .att-bar { height: 100%; background: #16a34a; border-radius: 3px; }
+
+    /* ── Vacations ── */
+    .vacation-form {
+      padding: 14px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .vacation-form select,
+    .vacation-form input[type="date"],
+    .vacation-form input[type="text"] {
+      width: 100%; padding: 8px 10px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 0.88rem; color: #111827;
+      font-family: inherit; margin-bottom: 8px;
+      transition: border-color 0.15s;
+    }
+    .vacation-form select:focus,
+    .vacation-form input:focus {
+      outline: none; border-color: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+    }
+    .vacation-form label {
+      display: block; font-size: 0.75rem; font-weight: 600;
+      color: #6b7280; margin-bottom: 4px;
+    }
+    .vacation-date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-vac-add {
+      width: 100%; padding: 9px; background: #16a34a; color: white;
+      border: none; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; margin-top: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-vac-add:active { background: #15803d; }
+    .vac-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; border-bottom: 1px solid #f3f4f6;
+      font-size: 0.83rem;
+    }
+    .vac-entry:last-child { border-bottom: none; }
+    .vac-info { flex: 1; }
+    .vac-name { font-weight: 600; color: #374151; }
+    .vac-dates { color: #6b7280; font-size: 0.75rem; }
+    .vac-note { color: #9ca3af; font-size: 0.72rem; margin-top: 1px; }
+    .btn-vac-del {
+      background: none; border: none; color: #dc2626;
+      cursor: pointer; font-size: 1rem; padding: 4px 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .vac-err {
+      background: #fee2e2; color: #dc2626;
+      padding: 8px 10px; border-radius: 7px;
+      font-size: 0.8rem; margin-bottom: 8px; display: none;
+    }
+
+    /* ── Loading / error / off-season states ── */
+    .state-screen {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 70vh; padding: 32px 24px; text-align: center;
+    }
+    .state-icon { font-size: 3.5rem; margin-bottom: 16px; }
+    .state-title { font-size: 1.3rem; font-weight: 700; color: #374151; margin-bottom: 8px; }
+    .state-sub { font-size: 0.9rem; color: #6b7280; line-height: 1.5; }
+
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid #d1fae5;
+      border-top-color: #16a34a; border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1f2937; color: white;
+      padding: 10px 20px; border-radius: 10px;
+      font-size: 0.85rem; font-weight: 500;
+      transition: transform 0.3s ease; z-index: 999; white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #dc2626; }
+
+    .refresh-hint {
+      text-align: center; font-size: 0.72rem;
+      color: #d1d5db; padding: 8px 0 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+
+function fmtDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return `${DAYS[dow]}, ${MONTHS[m-1]} ${d}`;
+}
+function fmtMonthDay(mmdd) {
+  const [m, d] = mmdd.split('-').map(Number);
+  return `${MONTHS[m-1]} ${d}`;
+}
+function fmtShortDate(yyyymmdd) {
+  const [y, m, d] = yyyymmdd.split('-').map(Number);
+  return `${MONTHS[m-1].slice(0,3)} ${d}`;
+}
+function fmtTime(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function fmtTimestamp(utcStr) {
+  if (!utcStr) return '';
+  // SQLite CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" in UTC
+  const d = new Date(utcStr.replace(' ', 'T') + 'Z');
+  const h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
+}
+function escHtml(s) {
+  return String(s||'')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (isError ? ' error' : '');
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+const slug = location.pathname.split('/').pop();
+let state = null;
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function render(data) {
+  const app = document.getElementById('app');
+
+  if (!data) {
+    app.innerHTML = `
+      <div class="state-screen">
+        <div class="spinner"></div>
+        <div class="state-sub">Loading…</div>
+      </div>`;
+    return;
+  }
+
+  if (data.error) {
+    app.innerHTML = `
+      <div class="state-screen">
+        <div class="state-icon">⚠️</div>
+        <div class="state-title">Something went wrong</div>
+        <div class="state-sub">${escHtml(data.error)}</div>
+      </div>`;
+    return;
+  }
+
+  document.title = `${data.team.name} · Badminton`;
+
+  if (!data.inSeason) {
+    app.innerHTML = `
+      <div class="header">
+        <div class="header-shuttle">🏸</div>
+        <h1>${escHtml(data.team.name)}</h1>
+      </div>
+      <div class="state-screen">
+        <div class="state-icon">🌴</div>
+        <div class="state-title">Off season</div>
+        <div class="state-sub">
+          The season runs ${fmtMonthDay(data.seasonStart)} – ${fmtMonthDay(data.seasonEnd)}.<br>
+          See you on the court soon!
+        </div>
+      </div>`;
+    return;
+  }
+
+  const { team, session, players, confirmed, declined } = data;
+  const pending = players.filter(p => p.role !== 'backup' && p.status === 'pending').length;
+  const min = team.min_players;
+  const pct = Math.min(100, Math.round(confirmed / min * 100));
+  const barClass = confirmed >= min ? 'ready' : confirmed >= min * 0.5 ? 'warn' : 'low';
+  const countClass = confirmed >= min ? 'ready' : confirmed >= Math.ceil(min / 2) ? 'warn' : 'low';
+
+  const metaHTML = [
+    `<span class="meta-item">📅 ${fmtDate(session.date)}</span>`,
+    `<span class="meta-item">🕐 ${fmtTime(team.play_time)}</span>`,
+    team.location ? `<span class="meta-item">📍 ${escHtml(team.location)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const descHTML = team.description ? `
+    <button class="desc-toggle" onclick="toggleDesc(this)">
+      <span class="desc-arrow">›</span> About
+    </button>
+    <div class="desc-body">${escHtml(team.description)}</div>` : '';
+
+  const bannerHTML = confirmed >= min
+    ? `<div class="game-on-banner"><span>✅</span> Game is on — ${confirmed} player${confirmed !== 1 ? 's' : ''} confirmed!</div>`
+    : '';
+
+  const playerCardHTML = (p) => `
+    <div class="player-card${p.role === 'backup' ? ' backup' : ''}" id="card-${p.id}">
+      <div class="player-avatar ${p.status}" id="av-${p.id}">${initials(p.name)}</div>
+      <div class="player-name">${escHtml(p.name)}</div>
+      <div class="btn-group">
+        <button class="btn btn-in  ${p.status === 'in'  ? 'active' : ''}"
+                onclick="setStatus(${p.id}, 'in',  ${session.id})"
+                id="bin-${p.id}">In</button>
+        <button class="btn btn-out ${p.status === 'out' ? 'active' : ''}"
+                onclick="setStatus(${p.id}, 'out', ${session.id})"
+                id="bout-${p.id}">Out</button>
+      </div>
+    </div>`;
+
+  const regularPlayers = players.filter(p => p.role !== 'backup');
+  const backupPlayers  = players.filter(p => p.role === 'backup');
+
+  const playersHTML = regularPlayers.map(playerCardHTML).join('') +
+    (backupPlayers.length ? `
+      <div class="backup-label" style="margin-top:12px;">Backup players</div>
+      ${backupPlayers.map(playerCardHTML).join('')}` : '');
+
+  // Response log — players who have responded (non-pending), sorted by time
+  const responded = players
+    .filter(p => p.status !== 'pending' && p.updated_at)
+    .sort((a, b) => a.updated_at > b.updated_at ? 1 : -1);
+
+  const logHTML = responded.length === 0
+    ? `<div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">No responses yet.</div>`
+    : responded.map(p => `
+      <div class="log-entry">
+        <div class="log-time">${fmtTimestamp(p.updated_at)}</div>
+        <div class="log-name">${escHtml(p.name)}</div>
+        <div class="log-badge ${p.status}">${p.status === 'in' ? '✓ In' : '✗ Out'}</div>
+      </div>`).join('');
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-shuttle">🏸</div>
+      <h1>${escHtml(team.name)}</h1>
+      <div class="meta">${metaHTML}</div>
+      ${descHTML}
+    </div>
+
+    <div class="status-card">
+      <div class="status-row">
+        <div>
+          <div class="status-count ${countClass}" id="confirmed-count">${confirmed} / ${min}</div>
+          <div class="status-label">players confirmed (need ${min})</div>
+        </div>
+        <div class="status-chips">
+          <span class="chip chip-in">✓ ${confirmed} in</span>
+          <span class="chip chip-out">✗ ${declined} out</span>
+          ${pending > 0 ? `<span class="chip chip-pending">? ${pending} pending</span>` : ''}
+        </div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-fill ${barClass}" id="progress-bar" style="width:${pct}%"></div>
+      </div>
+      ${bannerHTML ? `<div id="game-on-wrap">${bannerHTML}</div>` : '<div id="game-on-wrap"></div>'}
+    </div>
+
+    <div class="player-list">
+      <div class="section-label" style="margin-top:4px;">Players</div>
+      ${playersHTML}
+    </div>
+
+    <div class="collapsible-section">
+      <div class="collapsible-header" onclick="toggleSection('log-body', this)">
+        <span class="collapsible-title">Response log</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="log-body">
+        ${logHTML}
+      </div>
+    </div>
+
+    <div class="collapsible-section" style="margin-top:4px;">
+      <div class="collapsible-header" onclick="toggleSection('att-body', this)">
+        <span class="collapsible-title">Season attendance</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="att-body">
+        <div id="att-content" style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div>
+      </div>
+    </div>
+
+    <div class="collapsible-section" style="margin-top:4px;">
+      <div class="collapsible-header" onclick="toggleSection('vac-body', this)">
+        <span class="collapsible-title">Vacations</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="vac-body">
+        <div class="vacation-form">
+          <div class="vac-err" id="vac-err"></div>
+          <div style="margin-bottom:8px;">
+            <label>Your name</label>
+            <select id="vac-player">
+              <option value="">— select —</option>
+              ${players.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="vacation-date-row">
+            <div>
+              <label>From</label>
+              <input type="date" id="vac-start">
+            </div>
+            <div>
+              <label>To</label>
+              <input type="date" id="vac-end">
+            </div>
+          </div>
+          <div>
+            <label>Note (optional)</label>
+            <input type="text" id="vac-note" placeholder="e.g. Holiday trip">
+          </div>
+          <button class="btn-vac-add" onclick="addVacation()">Add vacation</button>
+        </div>
+        <div id="vac-list"><div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="refresh-hint">Updates automatically every 30 s</div>`;
+
+  loadAttendance();
+  loadVacations();
+}
+
+function toggleDesc(btn) {
+  const arrow = btn.querySelector('.desc-arrow');
+  const body = btn.nextElementSibling;
+  const open = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+}
+
+function toggleSection(bodyId, headerEl) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  const chev = headerEl.querySelector('.collapsible-chevron');
+  if (chev) chev.classList.toggle('open', open);
+}
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+
+async function loadAttendance() {
+  try {
+    const res = await fetch(`/api/t/${slug}/attendance`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const el = document.getElementById('att-content');
+    if (!el) return;
+
+    if (!data.attendance.length) {
+      el.textContent = 'No data yet.';
+      return;
+    }
+
+    const maxPlayed = Math.max(...data.attendance.map(r => r.played), 1);
+    el.outerHTML = `<div id="att-content">
+      <div style="padding:8px 14px 4px;font-size:0.72rem;color:#9ca3af;">
+        Season ${fmtShortDate(data.seasonStart)} – ${fmtShortDate(data.seasonEnd)}
+      </div>
+      ${data.attendance.map(r => `
+        <div class="att-row">
+          <div class="att-name">${escHtml(r.name)}</div>
+          <div class="att-bar-wrap">
+            <div class="att-bar" style="width:${r.total_sessions ? Math.round(r.played/maxPlayed*100) : 0}%"></div>
+          </div>
+          <div class="att-count">${r.played}<span class="att-total">/${r.total_sessions}</span></div>
+        </div>`).join('')}
+    </div>`;
+  } catch { /* silent */ }
+}
+
+// ── Vacations ────────────────────────────────────────────────────────────────
+
+async function loadVacations() {
+  try {
+    const res = await fetch(`/api/t/${slug}/vacations`);
+    if (!res.ok) return;
+    const vacations = await res.json();
+    renderVacations(vacations);
+  } catch { /* silent */ }
+}
+
+function renderVacations(vacations) {
+  const el = document.getElementById('vac-list');
+  if (!el) return;
+
+  if (!vacations.length) {
+    el.innerHTML = `<div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">No upcoming vacations.</div>`;
+    return;
+  }
+
+  el.innerHTML = vacations.map(v => `
+    <div class="vac-entry" id="vac-${v.id}">
+      <div class="vac-info">
+        <div class="vac-name">${escHtml(v.player_name)}</div>
+        <div class="vac-dates">${fmtShortDate(v.start_date)} – ${fmtShortDate(v.end_date)}</div>
+        ${v.note ? `<div class="vac-note">${escHtml(v.note)}</div>` : ''}
+      </div>
+      <button class="btn-vac-del" onclick="deleteVacation(${v.id})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+async function addVacation() {
+  const errEl = document.getElementById('vac-err');
+  errEl.style.display = 'none';
+
+  const playerId = document.getElementById('vac-player').value;
+  const start = document.getElementById('vac-start').value;
+  const end   = document.getElementById('vac-end').value;
+  const note  = document.getElementById('vac-note').value.trim();
+
+  if (!playerId) { errEl.textContent = 'Select your name.'; errEl.style.display = 'block'; return; }
+  if (!start || !end) { errEl.textContent = 'Select start and end dates.'; errEl.style.display = 'block'; return; }
+  if (start > end) { errEl.textContent = 'End date must be after start date.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch(`/api/t/${slug}/vacations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId: Number(playerId), start_date: start, end_date: end, note }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Something went wrong.'; errEl.style.display = 'block'; return; }
+
+    document.getElementById('vac-player').value = '';
+    document.getElementById('vac-start').value = '';
+    document.getElementById('vac-end').value = '';
+    document.getElementById('vac-note').value = '';
+    showToast('Vacation registered');
+    loadVacations();
+  } catch {
+    errEl.textContent = 'Could not save — please try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function deleteVacation(id) {
+  try {
+    const res = await fetch(`/api/t/${slug}/vacations/${id}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('Could not remove vacation', true); return; }
+    const entry = document.getElementById(`vac-${id}`);
+    if (entry) entry.remove();
+    const list = document.getElementById('vac-list');
+    if (list && !list.querySelector('.vac-entry')) {
+      list.innerHTML = `<div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">No upcoming vacations.</div>`;
+    }
+  } catch {
+    showToast('Could not remove vacation', true);
+  }
+}
+
+// ── Update counts without full re-render ──────────────────────────────────────
+
+function updateCounts(confirmed, declined, pending) {
+  const min = state.team.min_players;
+  const pct = Math.min(100, Math.round(confirmed / min * 100));
+  const barClass = confirmed >= min ? 'ready' : confirmed >= min * 0.5 ? 'warn' : 'low';
+  const countClass = confirmed >= min ? 'ready' : confirmed >= Math.ceil(min / 2) ? 'warn' : 'low';
+
+  const cc = document.getElementById('confirmed-count');
+  if (cc) { cc.textContent = `${confirmed} / ${min}`; cc.className = `status-count ${countClass}`; }
+
+  const bar = document.getElementById('progress-bar');
+  if (bar) { bar.style.width = pct + '%'; bar.className = `bar-fill ${barClass}`; }
+
+  const wrap = document.getElementById('game-on-wrap');
+  if (wrap) {
+    wrap.innerHTML = confirmed >= min
+      ? `<div class="game-on-banner"><span>✅</span> Game is on — ${confirmed} player${confirmed !== 1 ? 's' : ''} confirmed!</div>`
+      : '';
+  }
+
+  const regularPending = state.players.filter(p => p.role !== 'backup' && p.status === 'pending').length;
+  const chips = document.querySelectorAll('.chip');
+  if (chips.length >= 2) {
+    chips[0].textContent = `✓ ${confirmed} in`;
+    chips[1].textContent = `✗ ${declined} out`;
+    if (chips[2]) chips[2].textContent = `? ${regularPending} pending`;
+  }
+}
+
+// ── Player status toggle ──────────────────────────────────────────────────────
+
+async function setStatus(playerId, newStatus, sessionId) {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return;
+
+  const effectiveStatus = player.status === newStatus ? 'pending' : newStatus;
+
+  applyStatusToCard(playerId, effectiveStatus);
+  const oldStatus = player.status;
+  player.status = effectiveStatus;
+  player.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  updateCounts(
+    state.players.filter(p => p.status === 'in').length,
+    state.players.filter(p => p.status === 'out').length,
+    state.players.filter(p => p.status === 'pending').length,
+  );
+  refreshLogSection();
+
+  try {
+    const res = await fetch(`/api/t/${slug}/response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, playerId, status: effectiveStatus }),
+    });
+    if (!res.ok) throw new Error('Server error');
+    const data = await res.json();
+    updateCounts(data.confirmed, data.declined, data.pending);
+    state.confirmed = data.confirmed;
+  } catch {
+    player.status = oldStatus;
+    applyStatusToCard(playerId, oldStatus);
+    updateCounts(
+      state.players.filter(p => p.status === 'in').length,
+      state.players.filter(p => p.status === 'out').length,
+      state.players.filter(p => p.status === 'pending').length,
+    );
+    showToast('Could not save — please try again', true);
+  }
+}
+
+function applyStatusToCard(playerId, status) {
+  const av    = document.getElementById(`av-${playerId}`);
+  const binEl  = document.getElementById(`bin-${playerId}`);
+  const boutEl = document.getElementById(`bout-${playerId}`);
+  if (!av || !binEl || !boutEl) return;
+  av.className = `player-avatar ${status === 'in' || status === 'out' ? status : ''}`;
+  binEl.className  = `btn btn-in  ${status === 'in'  ? 'active' : ''}`;
+  boutEl.className = `btn btn-out ${status === 'out' ? 'active' : ''}`;
+}
+
+function refreshLogSection() {
+  const logBody = document.getElementById('log-body');
+  if (!logBody || !state) return;
+
+  const responded = state.players
+    .filter(p => p.status !== 'pending' && p.updated_at)
+    .sort((a, b) => a.updated_at > b.updated_at ? 1 : -1);
+
+  if (responded.length === 0) {
+    logBody.innerHTML = `<div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">No responses yet.</div>`;
+    return;
+  }
+
+  logBody.innerHTML = responded.map(p => `
+    <div class="log-entry">
+      <div class="log-time">${fmtTimestamp(p.updated_at)}</div>
+      <div class="log-name">${escHtml(p.name)}</div>
+      <div class="log-badge ${p.status}">${p.status === 'in' ? '✓ In' : '✗ Out'}</div>
+    </div>`).join('');
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function loadSession() {
+  try {
+    const res = await fetch(`/api/t/${slug}/session`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Team not found' }));
+      render(err);
+      return;
+    }
+    state = await res.json();
+    render(state);
+  } catch {
+    render({ error: 'Could not load session. Check your connection.' });
+  }
+}
+
+async function refreshSession() {
+  try {
+    const res = await fetch(`/api/t/${slug}/session`);
+    if (!res.ok) return;
+    const fresh = await res.json();
+    if (!fresh.inSeason || !state || !state.inSeason) return;
+
+    let changed = false;
+    for (const fp of fresh.players) {
+      const sp = state.players.find(p => p.id === fp.id);
+      if (sp && (sp.status !== fp.status || sp.updated_at !== fp.updated_at)) {
+        sp.status = fp.status;
+        sp.updated_at = fp.updated_at;
+        applyStatusToCard(fp.id, fp.status);
+        changed = true;
+      }
+    }
+    if (changed) {
+      state.confirmed = fresh.confirmed;
+      state.declined  = fresh.declined;
+      state.pending   = fresh.pending;
+      updateCounts(fresh.confirmed, fresh.declined, fresh.pending);
+      refreshLogSection();
+    }
+  } catch { /* silent */ }
+}
+
+render(null);
+loadSession();
+setInterval(refreshSession, 30_000);
+</script>
+</body>
+</html>
