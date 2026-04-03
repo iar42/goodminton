@@ -734,7 +734,9 @@ async function openTeamDetail(teamId) {
       <span class="copy-icon">🔗</span>
       <span class="url-text">${escHtml(teamUrl)}</span>
       <span style="font-size:0.75rem;color:#16a34a;font-weight:600;flex-shrink:0;">Copy</span>
-    </div>`;
+    </div>
+    <a href="/t/${escHtml(currentTeam.slug)}" target="_blank" class="btn btn-secondary btn-sm"
+       style="display:block;text-align:center;text-decoration:none;margin-top:6px;">Open team page ↗</a>`;
 
   // Team info
   document.getElementById('team-info-body').innerHTML = `
