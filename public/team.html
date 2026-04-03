@@ -446,8 +446,9 @@ function render(data) {
       </div>
     </div>`;
 
-  const regularPlayers = players.filter(p => p.role !== 'backup');
-  const backupPlayers  = players.filter(p => p.role === 'backup');
+  const icCmp = (a, b) => a.name.localeCompare(b.name, 'is');
+  const regularPlayers = players.filter(p => p.role !== 'backup').sort(icCmp);
+  const backupPlayers  = players.filter(p => p.role === 'backup').sort(icCmp);
 
   const playersHTML = regularPlayers.map(playerCardHTML).join('') +
     (backupPlayers.length ? `
@@ -531,7 +532,7 @@ function render(data) {
             <label>Your name</label>
             <select id="vac-player">
               <option value="">— select —</option>
-              ${players.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')}
+              ${[...players].sort(icCmp).map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')}
             </select>
           </div>
           <div class="vacation-date-row">

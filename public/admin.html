@@ -870,7 +870,7 @@ async function loadPlayers(teamId) {
   }
 
   const sorted = [...players].sort((a,b) => {
-    if (a.role === b.role) return a.name.localeCompare(b.name);
+    if (a.role === b.role) return a.name.localeCompare(b.name, 'is');
     return a.role === 'regular' ? -1 : 1;
   });
   el.innerHTML = sorted.map(p => `
@@ -944,10 +944,9 @@ function switchPlayerTab(tab) {
 function renderPickList(query) {
   const list = document.getElementById('inv-pick-list');
   const q = query.toLowerCase();
-  const filtered = inventoryCache.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    (p.email || '').toLowerCase().includes(q)
-  );
+  const filtered = inventoryCache
+    .filter(p => p.name.toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q))
+    .sort((a,b) => a.name.localeCompare(b.name, 'is'));
   if (!filtered.length) {
     list.innerHTML = '<div style="padding:12px;text-align:center;color:#9ca3af;font-size:0.85rem;">No players found.</div>';
     return;
@@ -1046,6 +1045,7 @@ async function loadInventory() {
     return;
   }
 
+  players.sort((a,b) => a.name.localeCompare(b.name, 'is'));
   card.innerHTML = players.map(gp => {
     const teamChips = gp.teams.map(t =>
       `<span class="inv-team-chip ${t.role === 'backup' ? 'backup' : ''}">${escHtml(t.teamName)}${t.role === 'backup' ? ' (B)' : ''}</span>`
