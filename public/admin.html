@@ -487,9 +487,16 @@
         <input type="number" id="tf-min" min="2" max="100" value="4">
       </div>
       <div class="form-group">
-        <label>Reminder (hours before) *</label>
-        <input type="number" id="tf-reminder" min="0.5" max="168" step="0.5" value="24">
-        <div class="form-hint">e.g. 24 = reminder sent 24 h before game</div>
+        <label>Email reminder (hours before)</label>
+        <input type="number" id="tf-reminder-email" min="0" max="168" step="0.5" value="24">
+        <div class="form-hint">0 = disabled</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>SMS reminder (hours before)</label>
+        <input type="number" id="tf-reminder-sms" min="0" max="168" step="0.5" value="24">
+        <div class="form-hint">0 = disabled</div>
       </div>
     </div>
     <div class="error-msg" id="team-modal-error" style="display:none;margin-bottom:12px;"></div>
@@ -604,6 +611,15 @@
       <label>Phone (for SMS reminders)</label>
       <input type="tel" id="if-phone" placeholder="+1 555 000 0000">
       <div class="form-hint">Include country code (e.g. +1, +44, +354)</div>
+    </div>
+    <div class="form-group">
+      <label>Reminder preference</label>
+      <select id="if-reminder-pref">
+        <option value="both">Email + SMS</option>
+        <option value="email">Email only</option>
+        <option value="sms">SMS only</option>
+        <option value="none">No reminders</option>
+      </select>
     </div>
     <div class="error-msg" id="inv-modal-error" style="display:none;margin-bottom:12px;"></div>
     <div class="form-actions">
@@ -744,7 +760,8 @@ async function openTeamDetail(teamId) {
     ${currentTeam.location ? `<div>📍 <strong>Location:</strong> ${escHtml(currentTeam.location)}</div>` : ''}
     <div>🗓️ <strong>Season:</strong> ${fmtMonthDay(currentTeam.season_start)} – ${fmtMonthDay(currentTeam.season_end)}</div>
     <div>👥 <strong>Min. players:</strong> ${currentTeam.min_players}</div>
-    <div>🔔 <strong>Reminder:</strong> ${currentTeam.reminder_hours} hours before game</div>
+    <div>🔔 <strong>Email reminder:</strong> ${currentTeam.reminder_hours_email > 0 ? currentTeam.reminder_hours_email + ' hours before game' : 'Disabled'}</div>
+    <div>🔔 <strong>SMS reminder:</strong> ${currentTeam.reminder_hours_sms > 0 ? currentTeam.reminder_hours_sms + ' hours before game' : 'Disabled'}</div>
     ${currentTeam.description ? `<div style="margin-top:8px;color:#6b7280;">${escHtml(currentTeam.description)}</div>` : ''}`;
 
   showPage('page-team-detail');
@@ -780,7 +797,8 @@ function openTeamModal(team = null) {
   document.getElementById('tf-season-start').value = team?.season_start || '09-01';
   document.getElementById('tf-season-end').value   = team?.season_end   || '05-31';
   document.getElementById('tf-min').value      = team?.min_players || 4;
-  document.getElementById('tf-reminder').value = team?.reminder_hours || 24;
+  document.getElementById('tf-reminder-email').value = team?.reminder_hours_email ?? 24;
+  document.getElementById('tf-reminder-sms').value   = team?.reminder_hours_sms   ?? 24;
 
   document.getElementById('team-modal').style.display = 'flex';
   setTimeout(() => document.getElementById('tf-name').focus(), 100);
@@ -825,8 +843,9 @@ async function saveTeam() {
     play_time:     document.getElementById('tf-time').value,
     season_start:  ss,
     season_end:    se,
-    min_players:   Number(document.getElementById('tf-min').value),
-    reminder_hours: Number(document.getElementById('tf-reminder').value),
+    min_players:          Number(document.getElementById('tf-min').value),
+    reminder_hours_email: Number(document.getElementById('tf-reminder-email').value),
+    reminder_hours_sms:   Number(document.getElementById('tf-reminder-sms').value),
   };
 
   if (!body.name || !body.slug) {
@@ -1070,6 +1089,7 @@ async function loadInventory() {
         <div class="inv-info">
           <div class="inv-name">${escHtml(gp.name)}</div>
           <div class="inv-contact">${[gp.email, gp.phone].filter(Boolean).join(' · ') || 'No contact info'}</div>
+          <div class="inv-contact" style="color:#9ca3af;">🔔 ${{ both:'Email + SMS', email:'Email only', sms:'SMS only', none:'No reminders' }[gp.reminder_pref] || 'Email + SMS'}</div>
           ${gp.teams.length ? `<div class="inv-teams">${teamChips}</div>` : ''}
         </div>
         <div class="player-actions">
@@ -1088,6 +1108,7 @@ function openInvModal(player = null) {
   document.getElementById('if-name').value  = player?.name  || '';
   document.getElementById('if-email').value = player?.email || '';
   document.getElementById('if-phone').value = player?.phone || '';
+  document.getElementById('if-reminder-pref').value = player?.reminder_pref || 'both';
   document.getElementById('inv-modal').style.display = 'flex';
   setTimeout(() => document.getElementById('if-name').focus(), 100);
 }
@@ -1101,9 +1122,10 @@ async function saveInvPlayer() {
   const errEl = document.getElementById('inv-modal-error');
   errEl.style.display = 'none';
   const body = {
-    name:  document.getElementById('if-name').value.trim(),
-    email: document.getElementById('if-email').value.trim(),
-    phone: document.getElementById('if-phone').value.trim(),
+    name:          document.getElementById('if-name').value.trim(),
+    email:         document.getElementById('if-email').value.trim(),
+    phone:         document.getElementById('if-phone').value.trim(),
+    reminder_pref: document.getElementById('if-reminder-pref').value,
   };
   if (!body.name) { errEl.textContent = 'Name is required'; errEl.style.display = 'block'; return; }
 

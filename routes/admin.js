@@ -60,7 +60,8 @@ router.get('/api/teams', requireAuth, (req, res) => {
 
 router.post('/api/teams', requireAuth, (req, res) => {
   const { name, slug, description, location, day_of_week, play_time,
-          season_start, season_end, min_players, reminder_hours } = req.body;
+          season_start, season_end, min_players,
+          reminder_hours_email, reminder_hours_sms } = req.body;
 
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return res.status(400).json({ error: 'Slug must be lowercase letters, numbers, and hyphens only' });
@@ -69,11 +70,14 @@ router.post('/api/teams', requireAuth, (req, res) => {
   try {
     const result = db.prepare(`
       INSERT INTO teams
-        (name, slug, description, location, day_of_week, play_time, season_start, season_end, min_players, reminder_hours)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, slug, description, location, day_of_week, play_time, season_start, season_end,
+         min_players, reminder_hours_email, reminder_hours_sms)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(name, slug, description || null, location || null,
            day_of_week, play_time, season_start, season_end,
-           min_players || 4, reminder_hours || 24);
+           min_players || 4,
+           reminder_hours_email ?? 24,
+           reminder_hours_sms   ?? 24);
     res.json(db.prepare('SELECT * FROM teams WHERE id = ?').get(result.lastInsertRowid));
   } catch (e) {
     if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'That URL slug is already taken' });
@@ -83,7 +87,8 @@ router.post('/api/teams', requireAuth, (req, res) => {
 
 router.put('/api/teams/:id', requireAuth, (req, res) => {
   const { name, slug, description, location, day_of_week, play_time,
-          season_start, season_end, min_players, reminder_hours } = req.body;
+          season_start, season_end, min_players,
+          reminder_hours_email, reminder_hours_sms } = req.body;
 
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return res.status(400).json({ error: 'Slug must be lowercase letters, numbers, and hyphens only' });
@@ -93,11 +98,15 @@ router.put('/api/teams/:id', requireAuth, (req, res) => {
     db.prepare(`
       UPDATE teams SET
         name=?, slug=?, description=?, location=?, day_of_week=?, play_time=?,
-        season_start=?, season_end=?, min_players=?, reminder_hours=?
+        season_start=?, season_end=?, min_players=?,
+        reminder_hours_email=?, reminder_hours_sms=?
       WHERE id=?
     `).run(name, slug, description || null, location || null,
            day_of_week, play_time, season_start, season_end,
-           min_players, reminder_hours, req.params.id);
+           min_players,
+           reminder_hours_email ?? 24,
+           reminder_hours_sms   ?? 24,
+           req.params.id);
     res.json(db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id));
   } catch (e) {
     if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'That URL slug is already taken' });
@@ -139,24 +148,26 @@ router.get('/api/inventory', requireAuth, (req, res) => {
 });
 
 router.post('/api/inventory', requireAuth, (req, res) => {
-  const { name, email, phone } = req.body;
+  const { name, email, phone, reminder_pref } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
+  const pref = ['none','email','sms','both'].includes(reminder_pref) ? reminder_pref : 'both';
   const result = db.prepare(
-    'INSERT INTO global_players (name, email, phone) VALUES (?, ?, ?)'
-  ).run(name.trim(), email || null, phone || null);
+    'INSERT INTO global_players (name, email, phone, reminder_pref) VALUES (?, ?, ?, ?)'
+  ).run(name.trim(), email || null, phone || null, pref);
 
   const gp = db.prepare('SELECT * FROM global_players WHERE id = ?').get(result.lastInsertRowid);
   res.json({ ...gp, teams: [] });
 });
 
 router.put('/api/inventory/:id', requireAuth, (req, res) => {
-  const { name, email, phone } = req.body;
+  const { name, email, phone, reminder_pref } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
+  const pref = ['none','email','sms','both'].includes(reminder_pref) ? reminder_pref : 'both';
   db.prepare(
-    'UPDATE global_players SET name=?, email=?, phone=? WHERE id=?'
-  ).run(name.trim(), email || null, phone || null, req.params.id);
+    'UPDATE global_players SET name=?, email=?, phone=?, reminder_pref=? WHERE id=?'
+  ).run(name.trim(), email || null, phone || null, pref, req.params.id);
 
   // Sync name/email/phone to all linked team player rows
   db.prepare(

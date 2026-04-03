@@ -90,13 +90,31 @@ db.exec(`
 `);
 
 // ── Schema migrations (idempotent) ───────────────────────────────────────────
-// Add columns to players if upgrading from an older schema
 for (const col of [
+  // players
   "ALTER TABLE players ADD COLUMN global_player_id INTEGER REFERENCES global_players(id) ON DELETE SET NULL",
   "ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'regular'",
+  // global_players — per-player reminder channel preference
+  "ALTER TABLE global_players ADD COLUMN reminder_pref TEXT NOT NULL DEFAULT 'both'",
+  // teams — separate reminder hours per channel (old reminder_hours column kept but unused)
+  "ALTER TABLE teams ADD COLUMN reminder_hours_email REAL NOT NULL DEFAULT 24",
+  "ALTER TABLE teams ADD COLUMN reminder_hours_sms   REAL NOT NULL DEFAULT 24",
+  // reminders_sent — per-channel dedup flags
+  "ALTER TABLE reminders_sent ADD COLUMN email_sent INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE reminders_sent ADD COLUMN sms_sent   INTEGER NOT NULL DEFAULT 0",
 ]) {
   try { db.exec(col); } catch (_) { /* column already exists */ }
 }
+
+// Seed new team reminder columns from legacy reminder_hours value
+db.exec(`
+  UPDATE teams
+  SET reminder_hours_email = reminder_hours, reminder_hours_sms = reminder_hours
+  WHERE reminder_hours_email = 24 AND reminder_hours_sms = 24 AND reminder_hours != 24
+`);
+
+// Mark existing reminders_sent rows as sent on both channels
+db.exec(`UPDATE reminders_sent SET email_sent = 1, sms_sent = 1 WHERE email_sent = 0 AND sms_sent = 0`);
 
 // Migrate existing players (global_player_id IS NULL) into global_players
 const unmigrated = db.prepare('SELECT * FROM players WHERE global_player_id IS NULL').all();
