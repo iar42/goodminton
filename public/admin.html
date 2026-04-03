@@ -620,7 +620,7 @@ let editingTeamId = null;
 let editingPlayerId = null;
 let editingInvId = null;
 let inventoryCache = [];   // full global player list
-let selectedInvId = null;  // currently selected in pick list
+let selectedInvIds = new Set();  // currently selected in pick list
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -894,7 +894,7 @@ async function loadPlayers(teamId) {
 // Open in "add" mode (tabs: inventory / new) or "edit" mode
 async function openPlayerModal(player = null) {
   editingPlayerId = player ? player.id : null;
-  selectedInvId = null;
+  selectedInvIds = new Set();
   document.getElementById('player-modal-error').style.display = 'none';
 
   if (player) {
@@ -952,7 +952,7 @@ function renderPickList(query) {
     return;
   }
   list.innerHTML = filtered.map(p => `
-    <div class="pick-row ${selectedInvId === p.id ? 'selected' : ''}"
+    <div class="pick-row ${selectedInvIds.has(p.id) ? 'selected' : ''}"
          onclick="selectInvPlayer(${p.id})">
       <div>
         <div class="pick-name">${escHtml(p.name)}</div>
@@ -967,8 +967,15 @@ function filterPickList() {
 }
 
 function selectInvPlayer(id) {
-  selectedInvId = selectedInvId === id ? null : id;
+  if (selectedInvIds.has(id)) selectedInvIds.delete(id);
+  else selectedInvIds.add(id);
   renderPickList(document.getElementById('inv-search').value);
+  updateAddBtn();
+}
+
+function updateAddBtn() {
+  const n = selectedInvIds.size;
+  document.getElementById('player-modal-save').textContent = n > 1 ? `Add ${n} players` : 'Add player';
 }
 
 function closePlayerModal(e) {
@@ -1002,26 +1009,31 @@ async function savePlayer() {
     const invTab = document.getElementById('player-tab-inventory');
     const isInventoryTab = invTab && invTab.style.display !== 'none';
 
-    let body;
     if (isInventoryTab) {
-      if (!selectedInvId) { errEl.textContent = 'Select a player from the list.'; errEl.style.display = 'block'; return; }
-      body = { globalPlayerId: selectedInvId, role: document.getElementById('inv-role').value };
+      if (selectedInvIds.size === 0) { errEl.textContent = 'Select at least one player from the list.'; errEl.style.display = 'block'; return; }
+      const role = document.getElementById('inv-role').value;
+      for (const id of selectedInvIds) {
+        const res = await fetch(`/admin/api/teams/${currentTeam.id}/players`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ globalPlayerId: id, role }),
+        });
+        if (!res.ok) { const d = await res.json(); errEl.textContent = d.error || 'Error'; errEl.style.display = 'block'; return; }
+      }
     } else {
       const name = document.getElementById('pf-name').value.trim();
       if (!name) { errEl.textContent = 'Name is required'; errEl.style.display = 'block'; return; }
-      body = {
+      const body = {
         name,
         email: document.getElementById('pf-email').value.trim(),
         phone: document.getElementById('pf-phone').value.trim(),
         role:  document.getElementById('pf-role').value,
       };
+      const res = await fetch(`/admin/api/teams/${currentTeam.id}/players`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Error'; errEl.style.display = 'block'; return; }
     }
-
-    const res = await fetch(`/admin/api/teams/${currentTeam.id}/players`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error || 'Error'; errEl.style.display = 'block'; return; }
   }
 
   document.getElementById('player-modal').style.display = 'none';
