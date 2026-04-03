@@ -1,15 +1,27 @@
 /**
  * Returns the date of the next (or current) occurrence of dayOfWeek.
- * If today IS the game day, returns today.
+ * If today IS the game day but the game time has already passed, returns
+ * next week's date so players can register for the upcoming game.
  * @param {number} dayOfWeek  0=Sunday … 6=Saturday
+ * @param {string} playTime   "HH:MM" (24h) — optional
  * @returns {Date}  midnight local time
  */
-function getNextSessionDate(dayOfWeek) {
-  const today = new Date();
+function getNextSessionDate(dayOfWeek, playTime) {
+  const now = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const todayDay = today.getDay();
   let daysUntil = dayOfWeek - todayDay;
   if (daysUntil < 0) daysUntil += 7;
+
+  // If today is game day, check whether the game has already started
+  if (daysUntil === 0 && playTime) {
+    const [hh, mm] = playTime.split(':').map(Number);
+    const gameTime = new Date(today);
+    gameTime.setHours(hh, mm, 0, 0);
+    if (now >= gameTime) daysUntil = 7; // game is over — show next week
+  }
+
   const d = new Date(today);
   d.setDate(today.getDate() + daysUntil);
   return d;

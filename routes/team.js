@@ -41,7 +41,7 @@ function getCurrentSeasonRange(team) {
  * vacationing players as 'out'.
  */
 function getOrCreateSession(team) {
-  const sessionDate = getNextSessionDate(team.day_of_week);
+  const sessionDate = getNextSessionDate(team.day_of_week, team.play_time);
   const inSeason = isInSeason(sessionDate, team.season_start, team.season_end);
 
   if (!inSeason) {

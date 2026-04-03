@@ -17,7 +17,7 @@ async function checkAndSendReminders() {
   const now = new Date();
 
   for (const team of teams) {
-    const sessionDate = getNextSessionDate(team.day_of_week);
+    const sessionDate = getNextSessionDate(team.day_of_week, team.play_time);
     if (!isInSeason(sessionDate, team.season_start, team.season_end)) continue;
 
     // Build the exact game datetime
