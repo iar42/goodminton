@@ -178,6 +178,59 @@ router.put('/api/inventory/:id', requireAuth, (req, res) => {
   res.json(gp);
 });
 
+router.post('/api/inventory/:id/test-notification', requireAuth, async (req, res) => {
+  const gp = db.prepare('SELECT * FROM global_players WHERE id = ?').get(req.params.id);
+  if (!gp) return res.status(404).json({ error: 'Player not found' });
+
+  const pref = gp.reminder_pref || 'both';
+  const result = { emailSent: false, smsSent: false, skippedEmail: null, skippedSms: null };
+
+  // Use their first active team for context, or fall back to placeholders
+  const team = db.prepare(`
+    SELECT t.* FROM teams t
+    JOIN players p ON p.team_id = t.id
+    WHERE p.global_player_id = ? AND p.active = 1
+    ORDER BY t.name COLLATE NOCASE LIMIT 1
+  `).get(gp.id);
+
+  const args = {
+    playerName:  gp.name,
+    teamName:    team ? team.name : 'Your Team',
+    sessionDate: new Date().toISOString().slice(0, 10),
+    playTime:    team ? team.play_time : '20:00',
+    location:    team ? team.location : null,
+    teamSlug:    team ? team.slug : '',
+    isTest:      true,
+  };
+
+  const { sendReminderEmail } = require('../services/email');
+  const { sendReminderSMS }   = require('../services/sms');
+
+  if (pref === 'email' || pref === 'both') {
+    if (gp.email) {
+      await sendReminderEmail({ ...args, to: gp.email });
+      result.emailSent = true;
+    } else {
+      result.skippedEmail = 'No email address on file';
+    }
+  } else {
+    result.skippedEmail = 'Email reminders disabled for this player';
+  }
+
+  if (pref === 'sms' || pref === 'both') {
+    if (gp.phone) {
+      await sendReminderSMS({ ...args, to: gp.phone });
+      result.smsSent = true;
+    } else {
+      result.skippedSms = 'No phone number on file';
+    }
+  } else {
+    result.skippedSms = 'SMS reminders disabled for this player';
+  }
+
+  res.json(result);
+});
+
 router.delete('/api/inventory/:id', requireAuth, (req, res) => {
   // Removing from inventory does not remove team memberships — those stay as standalone players
   db.prepare('UPDATE players SET global_player_id = NULL WHERE global_player_id = ?').run(req.params.id);

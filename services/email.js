@@ -12,18 +12,19 @@ function getClient() {
  * Sends a game reminder email to a player.
  * Silently skips if RESEND_API_KEY is not configured.
  */
-async function sendReminderEmail({ to, playerName, teamName, sessionDate, playTime, location, teamSlug }) {
+async function sendReminderEmail({ to, playerName, teamName, sessionDate, playTime, location, teamSlug, isTest = false }) {
   const client = getClient();
   if (!client || !to) return;
 
   const dateLabel = formatSessionDate(sessionDate);
   const teamUrl = `${process.env.APP_URL || 'http://localhost:3000'}/t/${teamSlug}`;
+  const subjectPrefix = isTest ? '[TEST] ' : '';
 
   try {
     await client.emails.send({
       from: process.env.EMAIL_FROM || 'Badminton <noreply@example.com>',
       to,
-      subject: `🏸 Reminder: ${teamName} plays ${dateLabel}`,
+      subject: `${subjectPrefix}🏸 Reminder: ${teamName} plays ${dateLabel}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -32,7 +33,7 @@ async function sendReminderEmail({ to, playerName, teamName, sessionDate, playTi
             <div style="background:#16a34a;padding:24px;color:white;">
               <div style="font-size:28px;margin-bottom:4px;">🏸</div>
               <h1 style="margin:0;font-size:20px;font-weight:700;">${teamName}</h1>
-              <p style="margin:4px 0 0;opacity:0.85;font-size:14px;">Game reminder</p>
+              <p style="margin:4px 0 0;opacity:0.85;font-size:14px;">${isTest ? 'Test notification' : 'Game reminder'}</p>
             </div>
             <div style="padding:24px;">
               <p style="margin:0 0 8px;color:#374151;">Hi <strong>${playerName}</strong>,</p>

@@ -1093,6 +1093,8 @@ async function loadInventory() {
           ${gp.teams.length ? `<div class="inv-teams">${teamChips}</div>` : ''}
         </div>
         <div class="player-actions">
+          <button class="btn btn-secondary btn-sm btn-icon" title="Send test notification"
+                  onclick="sendTestNotification(${gp.id}, this)">🔔</button>
           <button class="btn btn-secondary btn-sm btn-icon"
                   onclick="openInvModal(${JSON.stringify(gp).replace(/"/g,'&quot;')})">✏️</button>
           <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvPlayer(${gp.id})">🗑️</button>
@@ -1143,6 +1145,26 @@ async function deleteInvPlayer(id) {
   if (!confirm('Remove from inventory? This will not remove them from any teams.')) return;
   await fetch(`/admin/api/inventory/${id}`, { method: 'DELETE' });
   loadInventory();
+}
+
+async function sendTestNotification(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`/admin/api/inventory/${id}/test-notification`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Error sending test notification'); return; }
+
+    const lines = [];
+    if (data.emailSent)      lines.push('Email sent');
+    else if (data.skippedEmail) lines.push(`Email skipped: ${data.skippedEmail}`);
+    if (data.smsSent)        lines.push('SMS sent');
+    else if (data.skippedSms)   lines.push(`SMS skipped: ${data.skippedSms}`);
+    alert(lines.join('\n') || 'No notifications sent');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔔';
+  }
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────

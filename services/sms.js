@@ -14,18 +14,19 @@ function getClient() {
  * Sends a game reminder SMS to a player.
  * Silently skips if Twilio credentials are not configured.
  */
-async function sendReminderSMS({ to, playerName, teamName, sessionDate, playTime, teamSlug }) {
+async function sendReminderSMS({ to, playerName, teamName, sessionDate, playTime, teamSlug, isTest = false }) {
   const client = getClient();
   if (!client || !to || !process.env.TWILIO_FROM_NUMBER) return;
 
   const dateLabel = formatSessionDate(sessionDate);
   const teamUrl = `${process.env.APP_URL || 'http://localhost:3000'}/t/${teamSlug}`;
+  const testPrefix = isTest ? '[TEST] ' : '';
 
   try {
     await client.messages.create({
       from: process.env.TWILIO_FROM_NUMBER,
       to,
-      body: `🏸 ${teamName} plays ${dateLabel} at ${playTime}. Mark attendance: ${teamUrl}`,
+      body: `${testPrefix}🏸 ${teamName} plays ${dateLabel} at ${playTime}. Mark attendance: ${teamUrl}`,
     });
     console.log(`[sms] Reminder sent to ${to} for ${teamName} on ${sessionDate}`);
   } catch (err) {
