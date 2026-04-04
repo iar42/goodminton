@@ -4,6 +4,9 @@ A lightweight weekly badminton attendance tracker. Players mark themselves **In*
 
 ## Features
 
+### Front page (`/`)
+- Team slug lookup — enter a team code to jump straight to its page
+
 ### Player-facing team page (`/t/:slug`)
 - One-tap **In / Out** registration for the upcoming session
 - Live count of confirmed players vs. the minimum needed
@@ -15,19 +18,22 @@ A lightweight weekly badminton attendance tracker. Players mark themselves **In*
 - Auto-refreshes every 30 seconds
 
 ### Admin panel (`/admin`)
-- **Teams** — create and manage multiple teams, each with its own schedule, season dates, location, minimum player count, and reminder timing
+- **Teams** — create and manage multiple teams, each with its own schedule, season dates, location, minimum player count, and per-channel reminder timing
 - **Player inventory** — centralized player list; add a player once and assign them to any number of teams without re-entering their details
 - **Regular vs. backup players** — backup players appear in a separate section on the team page and are excluded from email/SMS reminders; their responses still count toward the session total
 - **Session history** — per-team log of past sessions with In/Out/pending counts; click any session to see a timestamped response log
 - **Season attendance log** — per-player play counts for the current season
 - **Vacation management** — view and delete vacation periods for any player
+- **Test notifications** — send a test email/SMS to any player directly from the inventory or team player list to verify contact details
 
 ### Reminders
 - Automatic **email** reminders via [Resend](https://resend.com) (free tier: 3,000 emails/month)
 - Automatic **SMS** reminders via [Twilio](https://twilio.com)
-- Reminder timing is configurable per team (e.g. 24 hours before game time)
+- Email and SMS reminder timing are **configurable independently** per team (e.g. email 48 h before, SMS 2 h before; set to 0 to disable a channel)
+- Each player has a **reminder preference**: `both`, `email only`, `SMS only`, or `none`
 - Only **regular** players receive reminders — backup players are always skipped
-- Each player is notified at most once per session
+- Players who have already responded In or Out are not reminded
+- Each player is notified at most once per channel per session
 
 ## Tech stack
 
@@ -90,6 +96,7 @@ The app starts on [http://localhost:3000](http://localhost:3000).
 ├── utils/
 │   └── session.js       # Date helpers (next session date, season check)
 └── public/
+    ├── index.html       # Front page (team slug lookup)
     ├── team.html        # Player-facing SPA
     └── admin.html       # Admin SPA
 ```
