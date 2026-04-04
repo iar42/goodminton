@@ -320,6 +320,58 @@ router.delete('/api/players/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+router.post('/api/players/:id/test-notification', requireAuth, async (req, res) => {
+  const player = db.prepare('SELECT * FROM players WHERE id = ?').get(req.params.id);
+  if (!player) return res.status(404).json({ error: 'Player not found' });
+
+  const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(player.team_id);
+
+  // Get reminder_pref from linked global player, defaulting to 'both'
+  const gp = player.global_player_id
+    ? db.prepare('SELECT reminder_pref FROM global_players WHERE id = ?').get(player.global_player_id)
+    : null;
+  const pref = gp?.reminder_pref || 'both';
+
+  const result = { emailSent: false, smsSent: false, skippedEmail: null, skippedSms: null };
+
+  const { sendReminderEmail } = require('../services/email');
+  const { sendReminderSMS }   = require('../services/sms');
+
+  const args = {
+    playerName:  player.name,
+    teamName:    team.name,
+    sessionDate: new Date().toISOString().slice(0, 10),
+    playTime:    team.play_time,
+    location:    team.location,
+    teamSlug:    team.slug,
+    isTest:      true,
+  };
+
+  if (pref === 'email' || pref === 'both') {
+    if (player.email) {
+      await sendReminderEmail({ ...args, to: player.email });
+      result.emailSent = true;
+    } else {
+      result.skippedEmail = 'No email address on file';
+    }
+  } else {
+    result.skippedEmail = 'Email reminders disabled for this player';
+  }
+
+  if (pref === 'sms' || pref === 'both') {
+    if (player.phone) {
+      await sendReminderSMS({ ...args, to: player.phone });
+      result.smsSent = true;
+    } else {
+      result.skippedSms = 'No phone number on file';
+    }
+  } else {
+    result.skippedSms = 'SMS reminders disabled for this player';
+  }
+
+  res.json(result);
+});
+
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 router.get('/api/teams/:id/sessions', requireAuth, (req, res) => {

@@ -906,6 +906,8 @@ async function loadPlayers(teamId) {
         <div class="contact">${[p.email, p.phone].filter(Boolean).join(' · ') || 'No contact info'}</div>
       </div>
       <div class="player-actions">
+        <button class="btn btn-secondary btn-sm btn-icon" title="Send test notification"
+                onclick="sendTestNotificationPlayer(${p.id}, this)">🔔</button>
         <button class="btn btn-secondary btn-sm btn-icon" onclick="openPlayerModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
         <button class="btn btn-danger btn-sm btn-icon" onclick="deletePlayer(${p.id})">🗑️</button>
       </div>
@@ -1065,6 +1067,26 @@ async function deletePlayer(playerId) {
   if (!confirm('Remove this player from the team? Their response history will be deleted.')) return;
   await fetch(`/admin/api/players/${playerId}`, { method: 'DELETE' });
   loadPlayers(currentTeam.id);
+}
+
+async function sendTestNotificationPlayer(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`/admin/api/players/${id}/test-notification`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Error sending test notification'); return; }
+
+    const lines = [];
+    if (data.emailSent)         lines.push('Email sent');
+    else if (data.skippedEmail) lines.push(`Email skipped: ${data.skippedEmail}`);
+    if (data.smsSent)           lines.push('SMS sent');
+    else if (data.skippedSms)   lines.push(`SMS skipped: ${data.skippedSms}`);
+    alert(lines.join('\n') || 'No notifications sent');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔔';
+  }
 }
 
 // ── Inventory page ────────────────────────────────────────────────────────────
