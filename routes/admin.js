@@ -392,7 +392,7 @@ router.get('/api/teams/:id/sessions', requireAuth, (req, res) => {
 
 router.get('/api/sessions/:sessionId/responses', requireAuth, (req, res) => {
   const rows = db.prepare(`
-    SELECT p.name, p.role, r.status, r.updated_at
+    SELECT p.name, p.role, r.status, r.updated_at, r.ip_address
     FROM responses r
     JOIN players p ON p.id = r.player_id
     WHERE r.session_id = ? AND r.status != 'pending'

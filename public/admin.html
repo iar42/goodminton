@@ -198,6 +198,7 @@
     .session-log-entry:last-child { border-bottom: none; }
     .sle-time { color: #9ca3af; min-width: 54px; }
     .sle-name { flex: 1; }
+    .sle-ip { margin-left: 6px; color: #9ca3af; font-size: 0.72rem; font-family: monospace; }
     .sle-badge { font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
     .sle-badge.in  { background: #dcfce7; color: #15803d; }
     .sle-badge.out { background: #fee2e2; color: #b91c1c; }
@@ -1242,7 +1243,10 @@ async function toggleSessionLog(sessionId, rowEl) {
     logEl.innerHTML = rows.map(r => `
       <div class="session-log-entry">
         <div class="sle-time">${fmtTimestamp(r.updated_at)}</div>
-        <div class="sle-name">${escHtml(r.name)}</div>
+        <div class="sle-name">
+          ${escHtml(r.name)}
+          ${r.ip_address ? `<span class="sle-ip">${escHtml(r.ip_address)}</span>` : ''}
+        </div>
         <div class="sle-badge ${r.status}">${r.status === 'in' ? '✓ In' : '✗ Out'}</div>
       </div>`).join('');
   } catch {

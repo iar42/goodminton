@@ -102,6 +102,8 @@ for (const col of [
   // reminders_sent — per-channel dedup flags
   "ALTER TABLE reminders_sent ADD COLUMN email_sent INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE reminders_sent ADD COLUMN sms_sent   INTEGER NOT NULL DEFAULT 0",
+  // responses — track IP address of the device that submitted the response
+  "ALTER TABLE responses ADD COLUMN ip_address TEXT",
 ]) {
   try { db.exec(col); } catch (_) { /* column already exists */ }
 }

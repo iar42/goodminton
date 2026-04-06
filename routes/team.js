@@ -158,12 +158,14 @@ router.post('/t/:slug/response', (req, res) => {
   ).get(sessionId, team.id);
   if (!session) return res.status(404).json({ error: 'Session not found' });
 
+  const ip = req.ip || null;
+
   db.prepare(`
-    INSERT INTO responses (session_id, player_id, status, updated_at)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO responses (session_id, player_id, status, ip_address, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(session_id, player_id)
-    DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP
-  `).run(sessionId, playerId, status);
+    DO UPDATE SET status = excluded.status, ip_address = excluded.ip_address, updated_at = CURRENT_TIMESTAMP
+  `).run(sessionId, playerId, status, ip);
 
   const counts = db.prepare(`
     SELECT
