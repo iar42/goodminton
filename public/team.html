@@ -226,7 +226,7 @@
     /* ── Vacations ── */
     .vacation-form {
       padding: 14px;
-      border-bottom: 1px solid #f3f4f6;
+      border-top: 1px solid #f3f4f6;
     }
     .vacation-form select,
     .vacation-form input[type="date"],
@@ -528,6 +528,7 @@ function render(data) {
         <span class="collapsible-chevron">▼</span>
       </div>
       <div class="collapsible-body" id="vac-body">
+        <div id="vac-list"><div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div></div>
         <div class="vacation-form">
           <div class="vac-err" id="vac-err"></div>
           <div style="margin-bottom:8px;">
@@ -553,7 +554,6 @@ function render(data) {
           </div>
           <button class="btn-vac-add" onclick="addVacation()">Add vacation</button>
         </div>
-        <div id="vac-list"><div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div></div>
       </div>
     </div>
 
