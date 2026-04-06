@@ -25,6 +25,7 @@ A lightweight weekly badminton attendance tracker. Players mark themselves **In*
 - **Season attendance log** — per-player play counts for the current season
 - **Vacation management** — view and delete vacation periods for any player
 - **Test notifications** — send a test email/SMS to any player directly from the inventory or team player list to verify contact details
+- **Database browser** — inspect the SQLite database directly in the browser: browse any table with pagination and sortable columns, view schema, and run raw SELECT queries
 
 ### Reminders
 - Automatic **email** reminders via [Resend](https://resend.com) (free tier: 3,000 emails/month)
