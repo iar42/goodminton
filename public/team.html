@@ -226,7 +226,6 @@
     /* ── Vacations ── */
     .vacation-form {
       padding: 14px;
-      border-top: 1px solid #f3f4f6;
     }
     .vacation-form select,
     .vacation-form input[type="date"],
@@ -529,6 +528,15 @@ function render(data) {
       </div>
       <div class="collapsible-body" id="vac-body">
         <div id="vac-list"><div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="collapsible-section" style="margin-top:4px;">
+      <div class="collapsible-header" onclick="toggleSection('vac-form-body', this)">
+        <span class="collapsible-title">Register vacation</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="vac-form-body">
         <div class="vacation-form">
           <div class="vac-err" id="vac-err"></div>
           <div style="margin-bottom:8px;">
