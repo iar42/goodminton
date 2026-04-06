@@ -158,7 +158,7 @@ router.post('/t/:slug/response', (req, res) => {
   ).get(sessionId, team.id);
   if (!session) return res.status(404).json({ error: 'Session not found' });
 
-  const ip = req.ip || null;
+  const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim() || null;
 
   db.prepare(`
     INSERT INTO responses (session_id, player_id, status, ip_address, updated_at)
