@@ -320,6 +320,48 @@
       .modal-backdrop { align-items: center; padding: 16px; }
       .modal-handle { display: none; }
     }
+
+    /* ── Database browser ── */
+    #page-db { max-width: 960px; }
+    .db-table-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .db-chip {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+      background: #f3f4f6; color: #374151; border: none; cursor: pointer;
+    }
+    .db-chip:hover { background: #e5e7eb; }
+    .db-chip.active { background: #16a34a; color: white; }
+    .db-grid-wrap { overflow-x: auto; }
+    .db-grid { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .db-grid th {
+      background: #f9fafb; padding: 7px 10px; text-align: left;
+      border-bottom: 2px solid #e5e7eb; font-weight: 600; white-space: nowrap;
+      cursor: pointer; user-select: none;
+    }
+    .db-grid th:hover { background: #f3f4f6; }
+    .db-grid th.sorted { color: #16a34a; }
+    .db-grid td {
+      padding: 6px 10px; border-bottom: 1px solid #f3f4f6;
+      max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .db-grid tr:last-child td { border-bottom: none; }
+    .db-grid tr:hover td { background: #f9fafb; }
+    .db-null { color: #d1d5db; font-style: italic; }
+    .db-pagination {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; font-size: 0.8rem; color: #6b7280;
+      border-top: 1px solid #f3f4f6;
+    }
+    .db-pagination button { padding: 3px 10px; }
+    .db-schema { font-size: 0.75rem; color: #6b7280; padding: 8px 16px; border-bottom: 1px solid #f3f4f6; }
+    .db-schema span { margin-right: 10px; font-family: monospace; }
+    .db-query-area {
+      width: 100%; font-family: monospace; font-size: 0.82rem;
+      padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px;
+      resize: vertical; min-height: 72px; outline: none;
+    }
+    .db-query-area:focus { border-color: #16a34a; }
+    .db-result-info { font-size: 0.78rem; color: #6b7280; margin-top: 6px; }
+    .db-result-info.error { color: #dc2626; }
   </style>
 </head>
 <body>
@@ -358,6 +400,7 @@
       <div style="font-weight:700;font-size:1.1rem;">Teams</div>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-secondary btn-sm" onclick="openInventoryPage()">👥 Players</button>
+        <button class="btn btn-secondary btn-sm" onclick="openDbPage()">🗄️ Database</button>
         <button class="btn btn-primary btn-sm" onclick="openTeamModal()">+ New team</button>
       </div>
     </div>
@@ -374,6 +417,44 @@
     </div>
     <div class="card" id="inventory-card">
       <div class="empty"><div class="icon">👤</div>No players yet.</div>
+    </div>
+  </div>
+
+  <!-- Database browser -->
+  <div class="page" id="page-db">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-top:4px;">
+      <div style="font-weight:700;font-size:1.1rem;">Database</div>
+    </div>
+
+    <div class="db-table-chips" id="db-table-chips"></div>
+
+    <div class="card" id="db-table-card" style="display:none">
+      <div class="card-header" style="justify-content:flex-start;gap:8px;">
+        <h2 id="db-table-title" style="font-family:monospace;"></h2>
+        <span id="db-table-total" style="font-size:0.78rem;color:#9ca3af;"></span>
+      </div>
+      <div class="db-schema" id="db-schema"></div>
+      <div class="db-grid-wrap">
+        <table class="db-grid" id="db-grid"><tbody></tbody></table>
+      </div>
+      <div class="db-pagination" id="db-pagination"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>SQL query</h2></div>
+      <div style="padding:12px;">
+        <textarea class="db-query-area" id="db-query-sql"
+          placeholder="SELECT * FROM players LIMIT 20"
+          onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')runDbQuery()"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="runDbQuery()">▶ Run</button>
+          <span style="font-size:0.75rem;color:#9ca3af;">Ctrl+Enter</span>
+        </div>
+        <div class="db-result-info" id="db-query-info"></div>
+      </div>
+      <div class="db-grid-wrap" id="db-query-result-wrap" style="display:none">
+        <table class="db-grid" id="db-query-grid"></table>
+      </div>
     </div>
   </div>
 
@@ -710,6 +791,132 @@ function openInventoryPage() {
   document.getElementById('back-btn').style.display = 'flex';
   showPage('page-inventory');
   loadInventory();
+}
+
+function openDbPage() {
+  document.getElementById('topbar-title').textContent = 'Database';
+  document.getElementById('back-btn').style.display = 'flex';
+  showPage('page-db');
+  loadDbTables();
+}
+
+// ── Database browser ──────────────────────────────────────────────────────────
+let dbCurrentTable = null;
+let dbSort = null;
+let dbSortDir = 'DESC';
+let dbOffset = 0;
+const DB_LIMIT = 50;
+
+async function loadDbTables() {
+  const res = await fetch('/admin/api/db/tables');
+  const tables = await res.json();
+  const el = document.getElementById('db-table-chips');
+  el.innerHTML = tables.map(t =>
+    `<button class="db-chip ${t === dbCurrentTable ? 'active' : ''}"
+             onclick="browseTable('${escHtml(t)}')">${escHtml(t)}</button>`
+  ).join('');
+}
+
+async function browseTable(table, offset = 0, sort = null, dir = null) {
+  dbCurrentTable = table;
+  dbOffset = offset;
+  if (sort !== null) { dbSort = sort; dbSortDir = dir; }
+
+  // Update chip highlight
+  document.querySelectorAll('.db-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent === table);
+  });
+
+  const params = new URLSearchParams({ limit: DB_LIMIT, offset: dbOffset });
+  if (dbSort) { params.set('sort', dbSort); params.set('dir', dbSortDir); }
+
+  const res = await fetch(`/admin/api/db/tables/${encodeURIComponent(table)}?${params}`);
+  const data = await res.json();
+  if (!res.ok) { alert(data.error); return; }
+
+  const card = document.getElementById('db-table-card');
+  card.style.display = '';
+  document.getElementById('db-table-title').textContent = table;
+  document.getElementById('db-table-total').textContent = `${data.total.toLocaleString()} rows`;
+
+  // Schema bar
+  document.getElementById('db-schema').innerHTML = data.schema.map(c =>
+    `<span title="${c.type}${c.notnull ? ' NOT NULL' : ''}${c.dflt_value !== null ? ' DEFAULT '+c.dflt_value : ''}">
+      ${c.pk ? '<strong>' : ''}${escHtml(c.name)}${c.pk ? '</strong>' : ''}
+      <span style="color:#d1d5db">${escHtml(c.type)}</span>
+    </span>`
+  ).join('');
+
+  // Grid
+  const cols = data.schema.map(c => c.name);
+  const thead = `<thead><tr>${cols.map(c => {
+    const isSorted = c === dbSort;
+    const nextDir = isSorted && dbSortDir === 'DESC' ? 'ASC' : 'DESC';
+    const arrow = isSorted ? (dbSortDir === 'ASC' ? ' ↑' : ' ↓') : '';
+    return `<th class="${isSorted ? 'sorted' : ''}"
+               onclick="browseTable('${escHtml(table)}', 0, '${escHtml(c)}', '${nextDir}')"
+               >${escHtml(c)}${arrow}</th>`;
+  }).join('')}</tr></thead>`;
+
+  const tbody = `<tbody>${data.rows.map(row =>
+    `<tr>${cols.map(c => {
+      const v = row[c];
+      if (v === null) return `<td><span class="db-null">null</span></td>`;
+      return `<td title="${escHtml(String(v))}">${escHtml(String(v))}</td>`;
+    }).join('')}</tr>`
+  ).join('')}</tbody>`;
+
+  document.getElementById('db-grid').innerHTML = thead + tbody;
+
+  // Pagination
+  const from = dbOffset + 1;
+  const to   = Math.min(dbOffset + DB_LIMIT, data.total);
+  const hasPrev = dbOffset > 0;
+  const hasNext = dbOffset + DB_LIMIT < data.total;
+  document.getElementById('db-pagination').innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="browseTable('${escHtml(table)}', ${dbOffset - DB_LIMIT})"
+            ${hasPrev ? '' : 'disabled'}>← Prev</button>
+    <span>${from}–${to} of ${data.total.toLocaleString()}</span>
+    <button class="btn btn-secondary btn-sm" onclick="browseTable('${escHtml(table)}', ${dbOffset + DB_LIMIT})"
+            ${hasNext ? '' : 'disabled'}>Next →</button>`;
+}
+
+async function runDbQuery() {
+  const sql = document.getElementById('db-query-sql').value.trim();
+  const infoEl = document.getElementById('db-query-info');
+  const wrapEl = document.getElementById('db-query-result-wrap');
+  infoEl.className = 'db-result-info';
+  infoEl.textContent = 'Running…';
+  wrapEl.style.display = 'none';
+
+  const res = await fetch('/admin/api/db/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    infoEl.className = 'db-result-info error';
+    infoEl.textContent = data.error;
+    return;
+  }
+
+  infoEl.textContent = `${data.count} row${data.count !== 1 ? 's' : ''} returned`;
+
+  if (!data.count) { wrapEl.style.display = 'none'; return; }
+
+  const thead = `<thead><tr>${data.columns.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${data.rows.map(row =>
+    `<tr>${data.columns.map(c => {
+      const v = row[c];
+      if (v === null) return `<td><span class="db-null">null</span></td>`;
+      return `<td title="${escHtml(String(v))}">${escHtml(String(v))}</td>`;
+    }).join('')}</tr>`
+  ).join('')}</tbody>`;
+
+  document.getElementById('db-query-grid').innerHTML = thead + tbody;
+  wrapEl.style.display = '';
 }
 
 // ── Teams ─────────────────────────────────────────────────────────────────────

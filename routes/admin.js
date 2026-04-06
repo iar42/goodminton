@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const Database = require('better-sqlite3');
+const path = require('path');
+const dbReadOnly = new Database(path.join(__dirname, '../data/badminton.db'), { readonly: true });
 
 function getCurrentSeasonRange(team) {
   const today = new Date();
@@ -443,6 +446,64 @@ router.get('/api/teams/:id/vacations', requireAuth, (req, res) => {
 router.delete('/api/vacations/:id', requireAuth, (req, res) => {
   db.prepare('DELETE FROM vacations WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+// ── Database browser (read-only) ──────────────────────────────────────────────
+
+router.get('/api/db/tables', requireAuth, (req, res) => {
+  const tables = dbReadOnly.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+  ).all().map(r => r.name);
+  res.json(tables);
+});
+
+router.get('/api/db/tables/:table', requireAuth, (req, res) => {
+  const table = req.params.table;
+
+  // Validate table exists
+  const exists = dbReadOnly.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
+  ).get(table);
+  if (!exists) return res.status(404).json({ error: 'Table not found' });
+
+  // Schema
+  const schema = dbReadOnly.prepare(`PRAGMA table_info(${JSON.stringify(table)})`).all();
+
+  // Pagination + sorting
+  const limit  = Math.min(parseInt(req.query.limit)  || 50, 200);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const validCols = schema.map(c => c.name);
+  const sortCol = validCols.includes(req.query.sort) ? req.query.sort : (schema[0]?.name || 'rowid');
+  const sortDir = req.query.dir === 'ASC' ? 'ASC' : 'DESC';
+
+  const total = dbReadOnly.prepare(`SELECT COUNT(*) AS n FROM ${JSON.stringify(table)}`).get().n;
+  const rows  = dbReadOnly.prepare(
+    `SELECT * FROM ${JSON.stringify(table)} ORDER BY "${sortCol}" ${sortDir} LIMIT ? OFFSET ?`
+  ).all(limit, offset);
+
+  res.json({ schema, rows, total, limit, offset });
+});
+
+router.post('/api/db/query', requireAuth, (req, res) => {
+  const sql = (req.body.sql || '').trim();
+  if (!sql) return res.status(400).json({ error: 'SQL is required' });
+
+  // Allow only SELECT statements
+  if (!/^select\s/i.test(sql)) {
+    return res.status(400).json({ error: 'Only SELECT queries are allowed' });
+  }
+  // Block multiple statements
+  if (sql.includes(';')) {
+    return res.status(400).json({ error: 'Multiple statements are not allowed' });
+  }
+
+  try {
+    const rows = dbReadOnly.prepare(sql).all();
+    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+    res.json({ columns, rows, count: rows.length });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 module.exports = router;
