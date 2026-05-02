@@ -434,11 +434,11 @@ router.get('/api/teams/:id/attendance', requireAuth, (req, res) => {
 
 router.get('/api/teams/:id/vacations', requireAuth, (req, res) => {
   const vacations = db.prepare(`
-    SELECT v.id, v.player_id, v.start_date, v.end_date, v.note, p.name AS player_name
+    SELECT v.id, v.start_date, v.end_date, v.note, p.name AS player_name
     FROM vacations v
-    JOIN players p ON p.id = v.player_id
-    WHERE p.team_id = ?
-    ORDER BY v.start_date ASC
+    JOIN players p ON p.global_player_id = v.global_player_id
+                   AND p.team_id = ? AND p.active = 1
+    ORDER BY v.start_date DESC
   `).all(req.params.id);
   res.json(vacations);
 });

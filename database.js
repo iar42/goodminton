@@ -127,6 +127,34 @@ db.exec(`
 // Mark existing reminders_sent rows as sent on both channels
 db.exec(`UPDATE reminders_sent SET email_sent = 1, sms_sent = 1 WHERE email_sent = 0 AND sms_sent = 0`);
 
+// Migrate vacations table from player_id to global_player_id
+const needsVacationMigration = !db.prepare(
+  "SELECT 1 FROM pragma_table_info('vacations') WHERE name='global_player_id'"
+).get();
+
+if (needsVacationMigration) {
+  db.exec(`
+    CREATE TABLE vacations_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      global_player_id INTEGER NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      note TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (global_player_id) REFERENCES global_players(id) ON DELETE CASCADE
+    )
+  `);
+  db.exec(`
+    INSERT OR IGNORE INTO vacations_new (id, global_player_id, start_date, end_date, note, created_at)
+    SELECT v.id, p.global_player_id, v.start_date, v.end_date, v.note, v.created_at
+    FROM vacations v
+    JOIN players p ON p.id = v.player_id
+    WHERE p.global_player_id IS NOT NULL
+  `);
+  db.exec(`DROP TABLE vacations`);
+  db.exec(`ALTER TABLE vacations_new RENAME TO vacations`);
+}
+
 // Migrate existing players (global_player_id IS NULL) into global_players
 const unmigrated = db.prepare('SELECT * FROM players WHERE global_player_id IS NULL').all();
 if (unmigrated.length) {

@@ -77,8 +77,10 @@ function getOrCreateSession(team) {
     WHERE session_id = ?
       AND status = 'pending'
       AND player_id IN (
-        SELECT player_id FROM vacations
-        WHERE start_date <= ? AND end_date >= ?
+        SELECT p.id FROM players p
+        JOIN vacations v ON v.global_player_id = p.global_player_id
+        WHERE v.start_date <= ? AND v.end_date >= ?
+          AND p.active = 1
       )
   `).run(session.id, dateStr, dateStr);
 
@@ -212,10 +214,11 @@ router.get('/t/:slug/vacations', (req, res) => {
 
   const today = formatDate(new Date());
   const vacations = db.prepare(`
-    SELECT v.id, v.player_id, v.start_date, v.end_date, v.note, p.name AS player_name
+    SELECT v.id, v.start_date, v.end_date, v.note, p.name AS player_name
     FROM vacations v
-    JOIN players p ON p.id = v.player_id
-    WHERE p.team_id = ? AND v.end_date >= ?
+    JOIN players p ON p.global_player_id = v.global_player_id
+                   AND p.team_id = ? AND p.active = 1
+    WHERE v.end_date >= ?
     ORDER BY v.start_date ASC
   `).all(team.id, today);
 
@@ -237,25 +240,28 @@ router.post('/t/:slug/vacations', (req, res) => {
   }
 
   const player = db.prepare(
-    'SELECT id FROM players WHERE id = ? AND team_id = ? AND active = 1'
+    'SELECT id, global_player_id FROM players WHERE id = ? AND team_id = ? AND active = 1'
   ).get(playerId, team.id);
   if (!player) return res.status(404).json({ error: 'Player not found' });
+  if (!player.global_player_id) return res.status(400).json({ error: 'Player account not linked' });
 
   const result = db.prepare(
-    'INSERT INTO vacations (player_id, start_date, end_date, note) VALUES (?, ?, ?, ?)'
-  ).run(playerId, start_date, end_date, note || null);
+    'INSERT INTO vacations (global_player_id, start_date, end_date, note) VALUES (?, ?, ?, ?)'
+  ).run(player.global_player_id, start_date, end_date, note || null);
 
-  // Auto-mark any upcoming sessions in this vacation window as 'out'
+  // Auto-mark pending responses as 'out' across ALL teams for this player
   db.prepare(`
     UPDATE responses SET status = 'out', updated_at = CURRENT_TIMESTAMP
-    WHERE player_id = ?
-      AND status = 'pending'
-      AND session_id IN (
-        SELECT id FROM sessions WHERE team_id = ? AND session_date >= ? AND session_date <= ?
-      )
-  `).run(playerId, team.id, start_date, end_date);
+    WHERE player_id IN (
+      SELECT id FROM players WHERE global_player_id = ? AND active = 1
+    )
+    AND status = 'pending'
+    AND session_id IN (
+      SELECT id FROM sessions WHERE session_date >= ? AND session_date <= ?
+    )
+  `).run(player.global_player_id, start_date, end_date);
 
-  res.json(db.prepare('SELECT * FROM vacations WHERE id = ?').get(result.lastInsertRowid));
+  res.json(db.prepare('SELECT id, global_player_id, start_date, end_date, note, created_at FROM vacations WHERE id = ?').get(result.lastInsertRowid));
 });
 
 // ── GET /api/t/:slug/messages ─────────────────────────────────────────────────
@@ -305,10 +311,10 @@ router.delete('/t/:slug/vacations/:id', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
-  // Verify the vacation belongs to a player on this team
+  // Verify the vacation is visible to a player on this team
   const vacation = db.prepare(`
     SELECT v.id FROM vacations v
-    JOIN players p ON p.id = v.player_id
+    JOIN players p ON p.global_player_id = v.global_player_id
     WHERE v.id = ? AND p.team_id = ?
   `).get(req.params.id, team.id);
   if (!vacation) return res.status(404).json({ error: 'Vacation not found' });
