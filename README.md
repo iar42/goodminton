@@ -13,7 +13,9 @@ A lightweight weekly badminton attendance tracker. Players mark themselves **In*
 - **Game on** banner when enough players have confirmed
 - **Response log** — timestamped record of who registered In or Out
 - **Season attendance** — each player's play count for the current season
-- **Vacation registration** — players can block out date ranges in advance; sessions that fall within a vacation window are automatically marked Out
+- **Vacation registration** — players can block out date ranges in advance; sessions within the window are automatically marked Out; a progress bar shows how far through the vacation period the player currently is
+- **Messages** — players can post short notes to teammates; messages are scoped to the current session and auto-refresh with the page
+- **No session notice** — when the upcoming session falls on a registered no-play date (e.g. a public holiday), the page shows a notice instead of registration buttons
 - Collapsible **team description**
 - Auto-refreshes every 30 seconds
 
@@ -24,6 +26,7 @@ A lightweight weekly badminton attendance tracker. Players mark themselves **In*
 - **Session history** — per-team log of past sessions with In/Out/pending counts; click any session to see a timestamped response log
 - **Season attendance log** — per-player play counts for the current season
 - **Vacation management** — view and delete vacation periods for any player
+- **No-play dates** — register global or team-specific dates (public holidays, closures, etc.) that cancel sessions; accessible via the **🚫 Holidays** button
 - **Test notifications** — send a test email/SMS to any player directly from the inventory or team player list to verify contact details
 - **Database browser** — inspect the SQLite database directly in the browser: browse any table with pagination and sortable columns, view schema, and run raw SELECT queries
 
@@ -89,7 +92,7 @@ The app starts on [http://localhost:3000](http://localhost:3000).
 ├── database.js          # SQLite schema + migrations
 ├── routes/
 │   ├── admin.js         # Admin API (teams, players, inventory, sessions)
-│   └── team.js          # Player-facing API (session, responses, vacations)
+│   └── team.js          # Player-facing API (session, responses, vacations, messages, no-play dates)
 ├── services/
 │   ├── scheduler.js     # Cron job that fires reminders
 │   ├── email.js         # Resend email helper
