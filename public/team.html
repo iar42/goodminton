@@ -262,6 +262,11 @@
     .vac-name { font-weight: 600; color: #374151; }
     .vac-dates { color: #6b7280; font-size: 0.75rem; }
     .vac-note { color: #9ca3af; font-size: 0.72rem; margin-top: 1px; }
+    .vac-progress-wrap {
+      width: 100%; height: 4px; background: #e5e7eb;
+      border-radius: 2px; overflow: hidden; margin-top: 5px;
+    }
+    .vac-progress-bar { height: 100%; background: #16a34a; border-radius: 2px; }
     .btn-vac-del {
       background: none; border: none; color: #dc2626;
       cursor: pointer; font-size: 1rem; padding: 4px 6px;
@@ -693,6 +698,16 @@ async function loadAttendance() {
 
 // ── Vacations ────────────────────────────────────────────────────────────────
 
+function vacProgress(startDate, endDate) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end   = new Date(ey, em - 1, ed);
+  if (today < start) return 0;
+  return Math.min(100, Math.round((today - start) / (end - start) * 100));
+}
+
 async function loadVacations() {
   try {
     const res = await fetch(`/api/t/${slug}/vacations`);
@@ -717,6 +732,7 @@ function renderVacations(vacations) {
         <div class="vac-name">${escHtml(v.player_name)}</div>
         <div class="vac-dates">${fmtShortDate(v.start_date)} – ${fmtShortDate(v.end_date)}</div>
         ${v.note ? `<div class="vac-note">${escHtml(v.note)}</div>` : ''}
+        <div class="vac-progress-wrap"><div class="vac-progress-bar" style="width:${vacProgress(v.start_date, v.end_date)}%"></div></div>
       </div>
       <button class="btn-vac-del" onclick="deleteVacation(${v.id})" title="Remove">✕</button>
     </div>`).join('');

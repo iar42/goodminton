@@ -216,6 +216,11 @@
     .vac-row-name { font-weight: 500; }
     .vac-row-dates { font-size: 0.75rem; color: #6b7280; }
     .vac-row-note { font-size: 0.72rem; color: #9ca3af; }
+    .vac-progress-wrap {
+      width: 100%; height: 4px; background: #e5e7eb;
+      border-radius: 2px; overflow: hidden; margin-top: 5px;
+    }
+    .vac-progress-bar { height: 100%; background: #16a34a; border-radius: 2px; }
 
     /* ── Empty state ── */
     .empty {
@@ -1508,16 +1513,21 @@ async function loadVacations(teamId) {
     return;
   }
 
+  const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
   el.innerHTML = vacations.map(v => {
     const [sy,sm2,sd] = v.start_date.split('-').map(Number);
     const [ey,em2,ed] = v.end_date.split('-').map(Number);
     const datesLabel = `${MONTHS[sm2-1].slice(0,3)} ${sd} – ${MONTHS[em2-1].slice(0,3)} ${ed}`;
+    const startMs = new Date(sy, sm2-1, sd).getTime();
+    const endMs   = new Date(ey, em2-1, ed).getTime();
+    const pct = todayMidnight < startMs ? 0 : Math.min(100, Math.round((todayMidnight - startMs) / (endMs - startMs) * 100));
     return `
       <div class="vac-row" id="vadmin-${v.id}">
         <div class="vac-row-info">
           <div class="vac-row-name">${escHtml(v.player_name)}</div>
           <div class="vac-row-dates">${datesLabel}</div>
           ${v.note ? `<div class="vac-row-note">${escHtml(v.note)}</div>` : ''}
+          <div class="vac-progress-wrap"><div class="vac-progress-bar" style="width:${pct}%"></div></div>
         </div>
         <button class="btn btn-danger btn-sm btn-icon" onclick="deleteVacationAdmin(${v.id})">🗑️</button>
       </div>`;
