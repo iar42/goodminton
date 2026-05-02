@@ -258,6 +258,48 @@ router.post('/t/:slug/vacations', (req, res) => {
   res.json(db.prepare('SELECT * FROM vacations WHERE id = ?').get(result.lastInsertRowid));
 });
 
+// ── GET /api/t/:slug/messages ─────────────────────────────────────────────────
+router.get('/t/:slug/messages', (req, res) => {
+  const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  const { sessionId } = req.query;
+  if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ? AND team_id = ?').get(sessionId, team.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  const messages = db.prepare(
+    'SELECT id, name, content, created_at FROM messages WHERE session_id = ? ORDER BY created_at DESC'
+  ).all(sessionId);
+
+  res.json(messages);
+});
+
+// ── POST /api/t/:slug/messages ────────────────────────────────────────────────
+router.post('/t/:slug/messages', (req, res) => {
+  const { sessionId, name, content } = req.body;
+
+  const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  if (!sessionId || !name || !content) {
+    return res.status(400).json({ error: 'sessionId, name, and content are required' });
+  }
+  if (name.trim().length === 0) return res.status(400).json({ error: 'Name cannot be empty' });
+  if (content.trim().length === 0) return res.status(400).json({ error: 'Message cannot be empty' });
+  if (content.length > 500) return res.status(400).json({ error: 'Message too long (max 500 characters)' });
+
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ? AND team_id = ?').get(sessionId, team.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  const result = db.prepare(
+    'INSERT INTO messages (session_id, name, content) VALUES (?, ?, ?)'
+  ).run(sessionId, name.trim(), content.trim());
+
+  res.json(db.prepare('SELECT id, name, content, created_at FROM messages WHERE id = ?').get(result.lastInsertRowid));
+});
+
 // ── DELETE /api/t/:slug/vacations/:id ────────────────────────────────────────
 router.delete('/t/:slug/vacations/:id', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);

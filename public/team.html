@@ -273,6 +273,47 @@
       font-size: 0.8rem; margin-bottom: 8px; display: none;
     }
 
+    /* ── Messages ── */
+    .msg-form { padding: 14px; }
+    .msg-form input[type="text"],
+    .msg-form textarea {
+      width: 100%; padding: 8px 10px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 0.88rem; color: #111827;
+      font-family: inherit; margin-bottom: 8px; box-sizing: border-box;
+      transition: border-color 0.15s;
+    }
+    .msg-form textarea { resize: vertical; min-height: 70px; }
+    .msg-form input[type="text"]:focus,
+    .msg-form textarea:focus {
+      outline: none; border-color: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+    }
+    .msg-form label {
+      display: block; font-size: 0.75rem; font-weight: 600;
+      color: #6b7280; margin-bottom: 4px;
+    }
+    .btn-msg-send {
+      width: 100%; padding: 9px; background: #16a34a; color: white;
+      border: none; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; margin-top: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-msg-send:active { background: #15803d; }
+    .msg-entry {
+      padding: 10px 14px; border-bottom: 1px solid #f3f4f6;
+      font-size: 0.83rem;
+    }
+    .msg-entry:last-child { border-bottom: none; }
+    .msg-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .msg-author { font-weight: 600; color: #374151; }
+    .msg-time { color: #9ca3af; font-size: 0.72rem; flex-shrink: 0; }
+    .msg-text { color: #4b5563; margin-top: 3px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+    .msg-err {
+      background: #fee2e2; color: #dc2626;
+      padding: 8px 10px; border-radius: 7px;
+      font-size: 0.8rem; margin-bottom: 8px; display: none;
+    }
+
     /* ── Loading / error / off-season states ── */
     .state-screen {
       display: flex; flex-direction: column;
@@ -502,22 +543,33 @@ function render(data) {
     </div>
 
     <div class="collapsible-section">
-      <div class="collapsible-header" onclick="toggleSection('log-body', this)">
-        <span class="collapsible-title">Response log</span>
+      <div class="collapsible-header" onclick="toggleSection('msg-body', this)">
+        <span class="collapsible-title">Messages</span>
         <span class="collapsible-chevron">▼</span>
       </div>
-      <div class="collapsible-body" id="log-body">
-        ${logHTML}
+      <div class="collapsible-body" id="msg-body">
+        <div id="msg-list"><div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div></div>
       </div>
     </div>
 
     <div class="collapsible-section" style="margin-top:4px;">
-      <div class="collapsible-header" onclick="toggleSection('att-body', this)">
-        <span class="collapsible-title">Season attendance</span>
+      <div class="collapsible-header" onclick="toggleSection('msg-form-body', this)">
+        <span class="collapsible-title">Leave a message</span>
         <span class="collapsible-chevron">▼</span>
       </div>
-      <div class="collapsible-body" id="att-body">
-        <div id="att-content" style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div>
+      <div class="collapsible-body" id="msg-form-body">
+        <div class="msg-form">
+          <div class="msg-err" id="msg-err"></div>
+          <div style="margin-bottom:8px;">
+            <label>Your name</label>
+            <input type="text" id="msg-name" placeholder="e.g. Anna">
+          </div>
+          <div>
+            <label>Message</label>
+            <textarea id="msg-text" placeholder="What's on your mind?"></textarea>
+          </div>
+          <button class="btn-msg-send" onclick="sendMessage(${session.id})">Send</button>
+        </div>
       </div>
     </div>
 
@@ -565,10 +617,31 @@ function render(data) {
       </div>
     </div>
 
+    <div class="collapsible-section" style="margin-top:4px;">
+      <div class="collapsible-header" onclick="toggleSection('log-body', this)">
+        <span class="collapsible-title">Response log</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="log-body">
+        ${logHTML}
+      </div>
+    </div>
+
+    <div class="collapsible-section" style="margin-top:4px;">
+      <div class="collapsible-header" onclick="toggleSection('att-body', this)">
+        <span class="collapsible-title">Season attendance</span>
+        <span class="collapsible-chevron">▼</span>
+      </div>
+      <div class="collapsible-body" id="att-body">
+        <div id="att-content" style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">Loading…</div>
+      </div>
+    </div>
+
     <div class="refresh-hint">Updates automatically every 30 s</div>`;
 
   loadAttendance();
   loadVacations();
+  loadMessages(session.id);
 }
 
 function toggleDesc(btn) {
@@ -647,6 +720,13 @@ function renderVacations(vacations) {
       </div>
       <button class="btn-vac-del" onclick="deleteVacation(${v.id})" title="Remove">✕</button>
     </div>`).join('');
+
+  const body = document.getElementById('vac-body');
+  if (body && !body.classList.contains('open')) {
+    body.classList.add('open');
+    const chev = body.previousElementSibling && body.previousElementSibling.querySelector('.collapsible-chevron');
+    if (chev) chev.classList.add('open');
+  }
 }
 
 async function addVacation() {
@@ -695,6 +775,71 @@ async function deleteVacation(id) {
     }
   } catch {
     showToast('Could not remove vacation', true);
+  }
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+async function loadMessages(sessionId) {
+  try {
+    const res = await fetch(`/api/t/${slug}/messages?sessionId=${sessionId}`);
+    if (!res.ok) return;
+    const messages = await res.json();
+    renderMessages(messages);
+  } catch { /* silent */ }
+}
+
+function renderMessages(messages) {
+  const el = document.getElementById('msg-list');
+  if (!el) return;
+  if (!messages.length) {
+    el.innerHTML = `<div style="padding:14px;text-align:center;color:#9ca3af;font-size:0.85rem;">No messages yet. Be the first!</div>`;
+    return;
+  }
+  el.innerHTML = messages.map(m => `
+    <div class="msg-entry">
+      <div class="msg-header">
+        <div class="msg-author">${escHtml(m.name)}</div>
+        <div class="msg-time">${fmtTimestamp(m.created_at)}</div>
+      </div>
+      <div class="msg-text">${escHtml(m.content)}</div>
+    </div>`).join('');
+
+  const body = document.getElementById('msg-body');
+  if (body && !body.classList.contains('open')) {
+    body.classList.add('open');
+    const chev = body.previousElementSibling && body.previousElementSibling.querySelector('.collapsible-chevron');
+    if (chev) chev.classList.add('open');
+  }
+}
+
+async function sendMessage(sessionId) {
+  const errEl = document.getElementById('msg-err');
+  errEl.style.display = 'none';
+
+  const name    = document.getElementById('msg-name').value.trim();
+  const content = document.getElementById('msg-text').value.trim();
+
+  if (!name) { errEl.textContent = 'Please enter your name.'; errEl.style.display = 'block'; return; }
+  if (!content) { errEl.textContent = 'Please write a message.'; errEl.style.display = 'block'; return; }
+  if (content.length > 500) { errEl.textContent = 'Message too long (max 500 characters).'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch(`/api/t/${slug}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, name, content }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Something went wrong.'; errEl.style.display = 'block'; return; }
+
+    document.getElementById('msg-name').value = '';
+    document.getElementById('msg-text').value = '';
+    showToast('Message sent');
+    loadMessages(sessionId);
+  } catch {
+    errEl.textContent = 'Could not send — please try again.';
+    errEl.style.display = 'block';
   }
 }
 
@@ -841,6 +986,7 @@ async function refreshSession() {
       updateCounts(fresh.confirmed, fresh.declined, fresh.pending);
       refreshLogSection();
     }
+    loadMessages(state.session.id);
   } catch { /* silent */ }
 }
 
