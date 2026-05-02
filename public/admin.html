@@ -216,6 +216,15 @@
     .vac-row-name { font-weight: 500; }
     .vac-row-dates { font-size: 0.75rem; color: #6b7280; }
     .vac-row-note { font-size: 0.72rem; color: #9ca3af; }
+    .npd-row {
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid #f9fafb; font-size: 0.85rem;
+    }
+    .npd-row:last-child { border-bottom: none; }
+    .npd-row-info { flex: 1; }
+    .npd-row-date { font-weight: 500; }
+    .npd-row-label { font-size: 0.75rem; color: #6b7280; }
+    .npd-row-scope { font-size: 0.72rem; color: #9ca3af; }
     .vac-progress-wrap {
       width: 100%; height: 4px; background: #e5e7eb;
       border-radius: 2px; overflow: hidden; margin-top: 5px;
@@ -407,6 +416,7 @@
       <div style="display:flex;gap:6px;">
         <button class="btn btn-secondary btn-sm" onclick="openInventoryPage()">👥 Players</button>
         <button class="btn btn-secondary btn-sm" onclick="openDbPage()">🗄️ Database</button>
+        <button class="btn btn-secondary btn-sm" onclick="openNoPlayPage()">🚫 Holidays</button>
         <button class="btn btn-primary btn-sm" onclick="openTeamModal()">+ New team</button>
       </div>
     </div>
@@ -507,6 +517,36 @@
     <div class="card">
       <div id="sessions-list">
         <div class="empty"><div class="icon">📅</div>No sessions yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No-play dates -->
+  <div class="page" id="page-no-play">
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:12px;margin-top:4px;">No-play dates</div>
+    <div class="card" style="padding:16px;margin-bottom:12px;">
+      <div style="display:grid;gap:8px;">
+        <div>
+          <label class="field-label">Date</label>
+          <input type="date" id="npd-date" class="field-input">
+        </div>
+        <div>
+          <label class="field-label">Label</label>
+          <input type="text" id="npd-label" class="field-input" placeholder="e.g. Christmas Day">
+        </div>
+        <div>
+          <label class="field-label">Team (optional — leave blank for all teams)</label>
+          <select id="npd-team" class="field-input">
+            <option value="">All teams</option>
+          </select>
+        </div>
+        <div id="npd-err" style="color:#dc2626;font-size:0.8rem;display:none;"></div>
+        <button class="btn btn-primary" onclick="addNoPlayDate()">Add no-play date</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="npd-list">
+        <div class="empty"><div class="icon">🗓️</div>No no-play dates registered.</div>
       </div>
     </div>
   </div>
@@ -804,6 +844,72 @@ function openDbPage() {
   document.getElementById('back-btn').style.display = 'flex';
   showPage('page-db');
   loadDbTables();
+}
+
+async function openNoPlayPage() {
+  document.getElementById('topbar-title').textContent = 'No-play dates';
+  document.getElementById('back-btn').style.display = 'flex';
+  showPage('page-no-play');
+  const res = await fetch('/admin/api/teams');
+  const teams = await res.json();
+  const sel = document.getElementById('npd-team');
+  sel.innerHTML = '<option value="">All teams</option>' +
+    teams.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+  loadNoPlayDates();
+}
+
+async function loadNoPlayDates() {
+  const res = await fetch('/admin/api/no-play-dates');
+  const dates = await res.json();
+  const el = document.getElementById('npd-list');
+  if (!dates.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🗓️</div>No no-play dates registered.</div>';
+    return;
+  }
+  el.innerHTML = dates.map(d => {
+    const [y, m, day] = d.date.split('-').map(Number);
+    const dateLabel = `${MONTHS[m-1]} ${day}, ${y}`;
+    return `
+      <div class="npd-row" id="npd-${d.id}">
+        <div class="npd-row-info">
+          <div class="npd-row-date">${dateLabel}</div>
+          <div class="npd-row-label">${escHtml(d.label)}</div>
+          <div class="npd-row-scope">${d.team_name ? escHtml(d.team_name) : 'All teams'}</div>
+        </div>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteNoPlayDate(${d.id})">🗑️</button>
+      </div>`;
+  }).join('');
+}
+
+async function addNoPlayDate() {
+  const errEl = document.getElementById('npd-err');
+  errEl.style.display = 'none';
+  const date   = document.getElementById('npd-date').value;
+  const label  = document.getElementById('npd-label').value.trim();
+  const teamId = document.getElementById('npd-team').value;
+  if (!date)  { errEl.textContent = 'Please select a date.';  errEl.style.display = ''; return; }
+  if (!label) { errEl.textContent = 'Please enter a label.'; errEl.style.display = ''; return; }
+  const res = await fetch('/admin/api/no-play-dates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, label, teamId: teamId ? Number(teamId) : null }),
+  });
+  if (!res.ok) { const e = await res.json(); errEl.textContent = e.error; errEl.style.display = ''; return; }
+  document.getElementById('npd-date').value = '';
+  document.getElementById('npd-label').value = '';
+  document.getElementById('npd-team').value = '';
+  loadNoPlayDates();
+}
+
+async function deleteNoPlayDate(id) {
+  if (!confirm('Remove this no-play date?')) return;
+  await fetch(`/admin/api/no-play-dates/${id}`, { method: 'DELETE' });
+  const el = document.getElementById(`npd-${id}`);
+  if (el) el.remove();
+  const list = document.getElementById('npd-list');
+  if (list && !list.querySelector('.npd-row')) {
+    list.innerHTML = '<div class="empty"><div class="icon">🗓️</div>No no-play dates registered.</div>';
+  }
 }
 
 // ── Database browser ──────────────────────────────────────────────────────────

@@ -456,6 +456,20 @@ function render(data) {
     return;
   }
 
+  if (data.noPlayDate) {
+    app.innerHTML = `
+      <div class="header">
+        <div class="header-shuttle">🏸</div>
+        <h1>${escHtml(data.team.name)}</h1>
+      </div>
+      <div class="state-screen">
+        <div class="state-icon">🚫</div>
+        <div class="state-title">No session this week</div>
+        <div class="state-sub">${escHtml(data.noPlayDate.label)}</div>
+      </div>`;
+    return;
+  }
+
   const { team, session, players, confirmed, declined } = data;
   const pending = players.filter(p => p.role !== 'backup' && p.status === 'pending').length;
   const min = team.min_players;
@@ -983,6 +997,9 @@ async function refreshSession() {
     const res = await fetch(`/api/t/${slug}/session`);
     if (!res.ok) return;
     const fresh = await res.json();
+    if (fresh.noPlayDate || (state && state.noPlayDate)) {
+      state = fresh; render(state); return;
+    }
     if (!fresh.inSeason || !state || !state.inSeason) return;
 
     let changed = false;

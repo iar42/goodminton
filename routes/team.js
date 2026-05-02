@@ -50,6 +50,18 @@ function getOrCreateSession(team) {
 
   const dateStr = formatDate(sessionDate);
 
+  // Check for a no-play date (global or team-specific; team-specific takes priority)
+  const noPlayDate = db.prepare(`
+    SELECT id, label FROM no_play_dates
+    WHERE date = ? AND (team_id IS NULL OR team_id = ?)
+    ORDER BY team_id IS NULL ASC
+    LIMIT 1
+  `).get(dateStr, team.id);
+
+  if (noPlayDate) {
+    return { inSeason: true, sessionDate, noPlayDate };
+  }
+
   // Upsert session row
   db.prepare(
     'INSERT OR IGNORE INTO sessions (team_id, session_date) VALUES (?, ?)'
@@ -92,7 +104,7 @@ router.get('/t/:slug/session', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
-  const { inSeason, session, sessionDate } = getOrCreateSession(team);
+  const { inSeason, session, sessionDate, noPlayDate } = getOrCreateSession(team);
 
   const teamPublic = {
     id: team.id,
@@ -111,6 +123,15 @@ router.get('/t/:slug/session', (req, res) => {
       seasonStart: team.season_start,
       seasonEnd: team.season_end,
       sessionDate: formatDate(sessionDate),
+    });
+  }
+
+  if (noPlayDate) {
+    return res.json({
+      team: teamPublic,
+      inSeason: true,
+      sessionDate: formatDate(sessionDate),
+      noPlayDate,
     });
   }
 
@@ -156,9 +177,14 @@ router.post('/t/:slug/response', (req, res) => {
   if (!player) return res.status(404).json({ error: 'Player not found' });
 
   const session = db.prepare(
-    'SELECT id FROM sessions WHERE id = ? AND team_id = ?'
+    'SELECT id, session_date FROM sessions WHERE id = ? AND team_id = ?'
   ).get(sessionId, team.id);
   if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  const blocked = db.prepare(
+    'SELECT 1 FROM no_play_dates WHERE date = ? AND (team_id IS NULL OR team_id = ?)'
+  ).get(session.session_date, team.id);
+  if (blocked) return res.status(403).json({ error: 'No session on this date' });
 
   const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim() || null;
 

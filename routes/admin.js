@@ -448,6 +448,34 @@ router.delete('/api/vacations/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── No-play dates ─────────────────────────────────────────────────────────────
+router.get('/api/no-play-dates', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT n.id, n.date, n.label, n.team_id, t.name AS team_name
+    FROM no_play_dates n
+    LEFT JOIN teams t ON t.id = n.team_id
+    ORDER BY n.date DESC
+  `).all();
+  res.json(rows);
+});
+
+router.post('/api/no-play-dates', requireAuth, (req, res) => {
+  const { date, label, teamId } = req.body;
+  if (!date || !label) return res.status(400).json({ error: 'date and label are required' });
+  const result = db.prepare(
+    'INSERT INTO no_play_dates (date, label, team_id) VALUES (?, ?, ?)'
+  ).run(date, label.trim(), teamId || null);
+  res.json(db.prepare(`
+    SELECT n.*, t.name AS team_name FROM no_play_dates n
+    LEFT JOIN teams t ON t.id = n.team_id WHERE n.id = ?
+  `).get(result.lastInsertRowid));
+});
+
+router.delete('/api/no-play-dates/:id', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM no_play_dates WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // ── Database browser (read-only) ──────────────────────────────────────────────
 
 router.get('/api/db/tables', requireAuth, (req, res) => {
